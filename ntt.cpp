@@ -122,8 +122,8 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
         [=](sycl::nd_item<1> it) {
           const uint64_t c = it.get_global_id(0);
 
-          *(twiddles + c) =
-              cbn::mod_exp((*omega).data, ff_p256_t(c).data, mod_p256_bn);
+          *(twiddles + c) = static_cast<ff_p256_t>(
+              cbn::mod_exp((*omega).data, ff_p256_t(c).data, mod_p256_bn));
         });
   });
 }

@@ -23,7 +23,7 @@ constexpr ff_p256_t TWO_ADIC_ROOT_OF_UNITY(
 
 // taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L3-L6
-ff_p256_t get_root_of_unity(uint64_t n);
+SYCL_EXTERNAL ff_p256_t get_root_of_unity(uint64_t n);
 
 // Initialises destination vector in transposed form of source vector
 //
