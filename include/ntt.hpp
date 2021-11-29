@@ -19,3 +19,5 @@ constexpr ff_p256_t TWO_ADICITY(28_ZL);
 // generator ** ((mod_p256 - 1) >> 28)
 constexpr ff_p256_t TWO_ADIC_ROOT_OF_UNITY(
     19103219067921713944291392827692070036145651957329286315305642004821462161904_ZL);
+
+ff_p256_t get_root_of_unity(uint64_t n);
