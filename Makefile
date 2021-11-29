@@ -5,8 +5,11 @@ SYCLAOTFLAGS = -fsycl-default-sub-group-size 32
 INCLUDES = -I./include
 PROG = run
 
-$(PROG): main.o test.o
+$(PROG): main.o test.o ntt.o
 	$(CXX) $(SYCLFLAGS) $^ -o $@
+
+ntt.o: ntt.cpp include/ntt.hpp
+	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(INCLUDES) -c $<
 
 test.o: test/test.cpp include/test.hpp
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(INCLUDES) -c $<
