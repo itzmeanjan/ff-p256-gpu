@@ -14,7 +14,7 @@ using ff_p256_t = decltype(cbn::Zq(mod_p256));
 constexpr ff_p256_t GENERATOR(5_ZL);
 
 // assert ((mod_p256 - 1) >> 28) & 0b1 == 1
-const uint64_t  TWO_ADICITY_ = 28ul;
+const uint64_t TWO_ADICITY_ = 28ul;
 constexpr ff_p256_t TWO_ADICITY(28_ZL);
 
 // generator ** ((mod_p256 - 1) >> 28)
@@ -33,3 +33,10 @@ sycl::event matrix_transposed_initialise(
     sycl::queue &q, ff_p256_t *vec_src, ff_p256_t *vec_dst, const uint64_t rows,
     const uint64_t cols, const uint64_t width, const uint64_t wg_size,
     std::vector<sycl::event> evts);
+
+// Parallel in-place square matrix transposition
+//
+// Taken from
+// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L468-L542
+sycl::event matrix_transpose(sycl::queue &q, ff_p256_t *data,
+                             const uint64_t dim, std::vector<sycl::event> evts);
