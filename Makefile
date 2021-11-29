@@ -22,3 +22,6 @@ main.o: main.cpp include/test.hpp
 
 clean:
 	find . -name '*.o' -o -name 'a.out' -o -name 'run' -o -name '*.gch' | xargs rm -f
+
+format:
+	find . -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
