@@ -69,3 +69,25 @@ void test_matrix_transposed_initialise(sycl::queue &q, const uint64_t dim,
   sycl::free(vec_src, q);
   sycl::free(vec_dst, q);
 }
+
+void test_matrix_transpose(sycl::queue &q, const uint64_t dim,
+                           const uint64_t wg_size) {
+  ff_p256_t *vec_a = static_cast<ff_p256_t *>(
+      sycl::malloc_shared(sizeof(ff_p256_t) * dim * dim, q));
+  ff_p256_t *vec_b = static_cast<ff_p256_t *>(
+      sycl::malloc_shared(sizeof(ff_p256_t) * dim * dim, q));
+
+  prepare_random_vector(vec_a, dim * dim);
+  sycl::event evt_0 = q.memcpy(vec_b, vec_a, sizeof(ff_p256_t) * dim * dim);
+
+  sycl::event evt_1 = matrix_transpose(q, vec_b, dim, {evt_0});
+  sycl::event evt_2 = matrix_transpose(q, vec_b, dim, {evt_1});
+  evt_2.wait();
+
+  for (uint64_t i = 0; i < dim * dim; i++) {
+    assert(*(vec_a + i) == *(vec_b + i));
+  }
+
+  sycl::free(vec_a, q);
+  sycl::free(vec_b, q);
+}
