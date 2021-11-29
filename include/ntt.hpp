@@ -14,6 +14,7 @@ using ff_p256_t = decltype(cbn::Zq(mod_p256));
 constexpr ff_p256_t GENERATOR(5_ZL);
 
 // assert ((mod_p256 - 1) >> 28) & 0b1 == 1
+const uint64_t  TWO_ADICITY_ = 28ul;
 constexpr ff_p256_t TWO_ADICITY(28_ZL);
 
 // generator ** ((mod_p256 - 1) >> 28)
