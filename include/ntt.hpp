@@ -20,4 +20,15 @@ constexpr ff_p256_t TWO_ADICITY(28_ZL);
 constexpr ff_p256_t TWO_ADIC_ROOT_OF_UNITY(
     19103219067921713944291392827692070036145651957329286315305642004821462161904_ZL);
 
+// taken from
+// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L3-L6
 ff_p256_t get_root_of_unity(uint64_t n);
+
+// Initialises destination vector in transposed form of source vector
+//
+// Taken from
+// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L544-L569
+sycl::event matrix_transposed_initialise(
+    sycl::queue &q, ff_p256_t *vec_src, ff_p256_t *vec_dst, const uint64_t rows,
+    const uint64_t cols, const uint64_t width, const uint64_t wg_size,
+    std::vector<sycl::event> evts);
