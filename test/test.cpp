@@ -91,3 +91,35 @@ void test_matrix_transpose(sycl::queue &q, const uint64_t dim,
   sycl::free(vec_a, q);
   sycl::free(vec_b, q);
 }
+
+void test_compute_twiddles(sycl::queue &q, const uint64_t dim,
+                           const uint64_t wg_size) {
+  assert((dim & (dim - 1ul)) == 0);
+
+  uint64_t log_2_dim = (uint64_t)sycl::log2((float)dim);
+  uint64_t n1 = 1 << (log_2_dim / 2);
+  uint64_t n2 = dim / n1;
+  uint64_t n = sycl::max(n1, n2);
+
+  assert(n1 == n2 || n2 == 2 * n1);
+  assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
+
+  ff_p256_t *twiddles =
+      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t) * n, q));
+  ff_p256_t *omega =
+      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t), q));
+
+  sycl::event evt_0 =
+      q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
+  sycl::event evt_1 = compute_twiddles(q, twiddles, omega, n, wg_size, {evt_0});
+  evt_1.wait();
+
+  ff_p256_t ω = get_root_of_unity(log_2_dim);
+  for (uint64_t i = 0; i < n; i++) {
+    assert(*(twiddles + i) == static_cast<ff_p256_t>(cbn::mod_exp(
+                                  ω.data, ff_p256_t(i).data, mod_p256_bn)));
+  }
+
+  sycl::free(twiddles, q);
+  sycl::free(omega, q);
+}
