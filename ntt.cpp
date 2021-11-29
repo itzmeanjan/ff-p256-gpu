@@ -110,3 +110,20 @@ sycl::event matrix_transpose(sycl::queue &q, ff_p256_t *data,
         });
   });
 }
+
+sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
+                             ff_p256_t *omega, const uint64_t dim,
+                             const uint64_t wg_size,
+                             std::vector<sycl::event> evts) {
+  return q.submit([&](sycl::handler &h) {
+    h.depends_on(evts);
+    h.parallel_for<class kernelComputeTwiddles>(
+        sycl::nd_range<1>{sycl::range<1>{dim}, sycl::range<1>{wg_size}},
+        [=](sycl::nd_item<1> it) {
+          const uint64_t c = it.get_global_id(0);
+
+          *(twiddles + c) =
+              cbn::mod_exp((*omega).data, ff_p256_t(c).data, mod_p256_bn);
+        });
+  });
+}
