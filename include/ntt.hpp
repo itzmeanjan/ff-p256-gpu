@@ -60,9 +60,27 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
 // ) for twiddle factors i.e. ω raised upto R-th power, where R = row count of
 // six step NTT matrix
 //
-// Taken from https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L728-L751
+// Taken from
+// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L728-L751
 sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
                                    ff_p256_t *twiddles, const uint64_t rows,
                                    const uint64_t cols, const uint64_t width,
                                    const uint64_t wg_size,
                                    std::vector<sycl::event> evts);
+
+// Performs `rows`-many parallel `cols`-point NTT
+//
+// Taken from
+// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L571-L709
+// and used in stripped down form
+sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
+                               const uint64_t rows, const uint64_t cols,
+                               const uint64_t width, const uint64_t wg_size,
+                               std::vector<sycl::event> evts);
+
+// Some utility function for index manipulation
+// taken from
+// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L190-L217
+uint64_t bit_rev(uint64_t v, uint64_t max_bit_width);
+uint64_t rev_all_bits(uint64_t n);
+uint64_t permute_index(uint64_t idx, uint64_t size);

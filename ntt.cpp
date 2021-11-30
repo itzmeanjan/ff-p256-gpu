@@ -185,3 +185,113 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
         });
   });
 }
+
+sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
+                               const uint64_t rows, const uint64_t cols,
+                               const uint64_t width, const uint64_t wg_size,
+                               std::vector<sycl::event> evts) {
+  uint64_t log_2_dim = (uint64_t)sycl::log2((float)cols);
+
+  std::vector<sycl::event> _evts;
+  _evts.reserve(log_2_dim);
+
+  // if you change this number, make sure
+  // you also change `[[intel::reqd_sub_group_size(Z)]]`
+  // below, such that SUBGROUP_SIZE == Z
+  constexpr uint64_t SUBGROUP_SIZE = 1ul << 5;
+
+  assert((SUBGROUP_SIZE & (SUBGROUP_SIZE - 1ul)) == 0ul &&
+         (SUBGROUP_SIZE <= (1ul << 6)));
+  assert((wg_size % SUBGROUP_SIZE) == 0);
+
+  for (int64_t i = log_2_dim - 1ul; i >= 0; i--) {
+    sycl::event evt = q.submit([&](sycl::handler &h) {
+      if (i == log_2_dim - 1ul) {
+        // only first submission depends on
+        // previous kernel executions, whose events
+        // are passed as argument to this function
+        h.depends_on(evts);
+      } else {
+        // all next kernel submissions
+        // depend on just previous kernel submission
+        // from body of this loop
+        h.depends_on(_evts.at(log_2_dim - (i + 2)));
+      }
+
+      h.parallel_for<class kernelCooleyTukeyRowWiseFFT>(
+          sycl::nd_range<2>{sycl::range<2>{rows, cols},
+                            sycl::range<2>{1, wg_size}},
+          [=](sycl::nd_item<2> it) [[intel::reqd_sub_group_size(32)]] {
+            const uint64_t r = it.get_global_id(0);
+            const uint64_t k = it.get_global_id(1);
+            const uint64_t p = 1ul << i;
+            const uint64_t q = cols / p;
+
+            uint64_t k_rev = bit_rev(k, log_2_dim) % q;
+            ff_p256_t ω = static_cast<ff_p256_t>(cbn::mod_exp(
+                (*omega).data, ff_p256_t(p * k_rev).data, mod_p256_bn));
+
+            if (k < (k ^ p)) {
+              ff_p256_t tmp_k = *(vec + r * width + k);
+              ff_p256_t tmp_k_p = *(vec + r * width + (k ^ p));
+              ff_p256_t tmp_k_p_ω = tmp_k_p * ω;
+
+              *(vec + r * width + k) = tmp_k + tmp_k_p_ω;
+              *(vec + r * width + (k ^ p)) = tmp_k - tmp_k_p_ω;
+            }
+          });
+    });
+    _evts.push_back(evt);
+  }
+
+  return q.submit([&](sycl::handler &h) {
+    // final reordering kernel depends on very
+    // last kernel submission performed in above loop
+    h.depends_on(_evts.at(log_2_dim - 1));
+    h.parallel_for<class kernelCooleyTukeyRowWiseFFTFinalReorder>(
+        sycl::nd_range<2>{sycl::range<2>{rows, cols},
+                          sycl::range<2>{1, wg_size}},
+        [=](sycl::nd_item<2> it) [[intel::reqd_sub_group_size(32)]] {
+          const uint64_t r = it.get_global_id(0);
+          const uint64_t k = it.get_global_id(1);
+          const uint64_t k_perm = permute_index(k, cols);
+
+          if (k_perm > k) {
+            ff_p256_t a = *(vec + r * width + k);
+            ff_p256_t b = *(vec + r * width + k_perm);
+
+            *(vec + r * width + k) = b;
+            *(vec + r * width + k_perm) = a;
+          }
+        });
+  });
+}
+
+uint64_t bit_rev(uint64_t v, uint64_t max_bit_width) {
+  uint64_t v_rev = 0ul;
+  for (uint64_t i = 0; i < max_bit_width; i++) {
+    v_rev += ((v >> i) & 0b1) * (1ul << (max_bit_width - 1ul - i));
+  }
+  return v_rev;
+}
+
+uint64_t rev_all_bits(uint64_t n) {
+  uint64_t rev = 0;
+
+  for (uint8_t i = 0; i < 64; i++) {
+    if ((1ul << i) & n) {
+      rev |= (1ul << (63 - i));
+    }
+  }
+
+  return rev;
+}
+
+uint64_t permute_index(uint64_t idx, uint64_t size) {
+  if (size == 1ul) {
+    return 0ul;
+  }
+
+  uint64_t bits = sycl::ext::intel::ctz(size);
+  return rev_all_bits(idx) >> (64ul - bits);
+}
