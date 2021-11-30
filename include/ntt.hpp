@@ -78,9 +78,15 @@ sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
                                const uint64_t width, const uint64_t wg_size,
                                std::vector<sycl::event> evts);
 
-// Some utility function for index manipulation
+// Some utility function for index manipulation,
 // taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L190-L217
 SYCL_EXTERNAL uint64_t bit_rev(uint64_t v, uint64_t max_bit_width);
 SYCL_EXTERNAL uint64_t rev_all_bits(uint64_t n);
 SYCL_EXTERNAL uint64_t permute_index(uint64_t idx, uint64_t size);
+
+// Six step algorithm based NTT implementation for 254-bit prime field
+//
+// Taken from https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L753-L831
+void six_step_fft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
+                  const uint64_t wg_size);
