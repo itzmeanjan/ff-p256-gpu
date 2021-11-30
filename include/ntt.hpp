@@ -50,3 +50,19 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
                              ff_p256_t *omega, const uint64_t dim,
                              const uint64_t wg_size,
                              std::vector<sycl::event> evts);
+
+// Exponentiates ω ( read N-th root of unity, when N = NTT domain size )
+// to (r * c), where r = row index, c = column index
+//
+// Note this routine, has a dependency on `compute_twiddles` routine
+// ( at
+// https://github.com/itzmeanjan/ff-p256-gpu/blob/197821fc87d715f1cd1d11d5c8488b7a2f1f81ed/include/ntt.hpp#L49
+// ) for twiddle factors i.e. ω raised upto R-th power, where R = row count of
+// six step NTT matrix
+//
+// Taken from https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L728-L751
+sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
+                                   ff_p256_t *twiddles, const uint64_t rows,
+                                   const uint64_t cols, const uint64_t width,
+                                   const uint64_t wg_size,
+                                   std::vector<sycl::event> evts);

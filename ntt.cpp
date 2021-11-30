@@ -144,3 +144,27 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
         });
   });
 }
+
+sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
+                                   ff_p256_t *twiddles, const uint64_t rows,
+                                   const uint64_t cols, const uint64_t width,
+                                   const uint64_t wg_size,
+                                   std::vector<sycl::event> evts) {
+  assert(cols == width || 2 * cols == width);
+
+  return q.submit([&](sycl::handler &h) {
+    h.depends_on(evts);
+    h.parallel_for<class kernelTwiddleMultiplication>(
+        sycl::nd_range<2>{sycl::range<2>{rows, cols},
+                          sycl::range<2>{1, wg_size}},
+        [=](sycl::nd_item<2> it) {
+          const uint64_t r = it.get_global_id(0);
+          const uint64_t c = it.get_global_id(1);
+
+          *(vec + r * width + c) =
+              *(vec + r * width + c) *
+              static_cast<ff_p256_t>(cbn::mod_exp(
+                  (*(twiddles + r)).data, ff_p256_t(c).data, mod_p256_bn));
+        });
+  });
+}
