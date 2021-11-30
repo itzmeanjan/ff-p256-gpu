@@ -128,7 +128,7 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
 
           // only work-group leader reads from global memory
           // and caches in local memory
-          if (sycl::ext::oneapi::leader(grp)) {
+          if (it.get_local_linear_id() == 0) {
             lds[0] = *omega;
           }
 
@@ -153,6 +153,10 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
   assert(cols == width || 2 * cols == width);
 
   return q.submit([&](sycl::handler &h) {
+    sycl::accessor<ff_p256_t, 1, sycl::access_mode::read_write,
+                   sycl::target::local>
+        lds{sycl::range<1>{1}, h};
+
     h.depends_on(evts);
     h.parallel_for<class kernelTwiddleMultiplication>(
         sycl::nd_range<2>{sycl::range<2>{rows, cols},
@@ -160,11 +164,24 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
         [=](sycl::nd_item<2> it) {
           const uint64_t r = it.get_global_id(0);
           const uint64_t c = it.get_global_id(1);
+          sycl::group<2> grp = it.get_group();
 
+          // only work-group leader helps in caching
+          // twiddle in local memory
+          if (it.get_local_linear_id() == 0) {
+            lds[0] = *(twiddles + r);
+          }
+
+          // until all work-items of this work-group
+          // arrives here, wait !
+          sycl::group_barrier(grp);
+
+          // after that all work-items of work-group reads from cached twiddle
+          // from local memory
           *(vec + r * width + c) =
               *(vec + r * width + c) *
-              static_cast<ff_p256_t>(cbn::mod_exp(
-                  (*(twiddles + r)).data, ff_p256_t(c).data, mod_p256_bn));
+              static_cast<ff_p256_t>(
+                  cbn::mod_exp(lds[0].data, ff_p256_t(c).data, mod_p256_bn));
         });
   });
 }
