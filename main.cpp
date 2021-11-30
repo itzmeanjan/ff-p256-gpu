@@ -25,5 +25,9 @@ int main(int argc, char **argv) {
   test_compute_twiddles(q, 1ul << 23, 1ul << 7);
   std::cout << "passed twiddle compute tests !" << std::endl;
 
+  test_twiddle_multiplication(q, 1ul << 23, 1ul << 7);
+  test_twiddle_multiplication(q, 1ul << 24, 1ul << 7);
+  std::cout << "passed twiddle multiplication tests !" << std::endl;
+
   return 0;
 }
