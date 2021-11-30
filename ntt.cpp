@@ -116,14 +116,31 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
                              const uint64_t wg_size,
                              std::vector<sycl::event> evts) {
   return q.submit([&](sycl::handler &h) {
+    sycl::accessor<ff_p256_t, 1, sycl::access_mode::read_write,
+                   sycl::target::local>
+        lds{sycl::range<1>{1}, h};
+
     h.depends_on(evts);
     h.parallel_for<class kernelComputeTwiddles>(
         sycl::nd_range<1>{sycl::range<1>{dim}, sycl::range<1>{wg_size}},
         [=](sycl::nd_item<1> it) {
+          sycl::group<1> grp = it.get_group();
+
+          // only work-group leader reads from global memory
+          // and caches in local memory
+          if (sycl::ext::oneapi::leader(grp)) {
+            lds[0] = *omega;
+          }
+
+          // wait until all work-items of work-group reach here
+          sycl::group_barrier(grp);
+
           const uint64_t c = it.get_global_id(0);
 
+          // now all work-items of some work-group read
+          // same (cached) ω from local memory
           *(twiddles + c) = static_cast<ff_p256_t>(
-              cbn::mod_exp((*omega).data, ff_p256_t(c).data, mod_p256_bn));
+              cbn::mod_exp(lds[0].data, ff_p256_t(c).data, mod_p256_bn));
         });
   });
 }
