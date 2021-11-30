@@ -90,3 +90,9 @@ SYCL_EXTERNAL uint64_t permute_index(uint64_t idx, uint64_t size);
 // Taken from https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L753-L831
 void six_step_fft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
                   const uint64_t wg_size);
+
+// Six step algorithm based NTT implementation for 254-bit prime field
+//
+// Taken from https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L833-L921
+void six_step_ifft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
+                   const uint64_t wg_size);
