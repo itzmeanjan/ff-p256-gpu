@@ -1,15 +1,15 @@
 #include <ntt.hpp>
 
-ff_p256_t get_root_of_unity(uint64_t n) {
+ff_p254_t get_root_of_unity(uint64_t n) {
   uint64_t pow_ = 1ul << (28 - n);
-  ff_p256_t pow(pow_);
+  ff_p254_t pow(pow_);
 
-  return static_cast<ff_p256_t>(
-      cbn::mod_exp(TWO_ADIC_ROOT_OF_UNITY.data, pow.data, mod_p256_bn));
+  return static_cast<ff_p254_t>(
+      cbn::mod_exp(TWO_ADIC_ROOT_OF_UNITY.data, pow.data, mod_p254_bn));
 }
 
 sycl::event matrix_transposed_initialise(
-    sycl::queue &q, ff_p256_t *vec_src, ff_p256_t *vec_dst, const uint64_t rows,
+    sycl::queue &q, ff_p254_t *vec_src, ff_p254_t *vec_dst, const uint64_t rows,
     const uint64_t cols, const uint64_t width, const uint64_t wg_size,
     std::vector<sycl::event> evts) {
   return q.submit([&](sycl::handler &h) {
@@ -31,7 +31,7 @@ sycl::event matrix_transposed_initialise(
   });
 }
 
-sycl::event matrix_transpose(sycl::queue &q, ff_p256_t *data,
+sycl::event matrix_transpose(sycl::queue &q, ff_p254_t *data,
                              const uint64_t dim,
                              std::vector<sycl::event> evts) {
   constexpr size_t TILE_DIM = 1 << 4;
@@ -40,10 +40,10 @@ sycl::event matrix_transpose(sycl::queue &q, ff_p256_t *data,
   assert(TILE_DIM >= BLOCK_ROWS);
 
   return q.submit([&](sycl::handler &h) {
-    sycl::accessor<ff_p256_t, 2, sycl::access_mode::read_write,
+    sycl::accessor<ff_p254_t, 2, sycl::access_mode::read_write,
                    sycl::target::local>
         tile_s{sycl::range<2>{TILE_DIM, TILE_DIM + 1}, h};
-    sycl::accessor<ff_p256_t, 2, sycl::access_mode::read_write,
+    sycl::accessor<ff_p254_t, 2, sycl::access_mode::read_write,
                    sycl::target::local>
         tile_d{sycl::range<2>{TILE_DIM, TILE_DIM + 1}, h};
 
@@ -111,12 +111,12 @@ sycl::event matrix_transpose(sycl::queue &q, ff_p256_t *data,
   });
 }
 
-sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
-                             ff_p256_t *omega, const uint64_t dim,
+sycl::event compute_twiddles(sycl::queue &q, ff_p254_t *twiddles,
+                             ff_p254_t *omega, const uint64_t dim,
                              const uint64_t wg_size,
                              std::vector<sycl::event> evts) {
   return q.submit([&](sycl::handler &h) {
-    sycl::accessor<ff_p256_t, 1, sycl::access_mode::read_write,
+    sycl::accessor<ff_p254_t, 1, sycl::access_mode::read_write,
                    sycl::target::local>
         lds{sycl::range<1>{1}, h};
 
@@ -139,21 +139,21 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
 
           // now all work-items of some work-group read
           // same (cached) ω from local memory
-          *(twiddles + c) = static_cast<ff_p256_t>(
-              cbn::mod_exp(lds[0].data, ff_p256_t(c).data, mod_p256_bn));
+          *(twiddles + c) = static_cast<ff_p254_t>(
+              cbn::mod_exp(lds[0].data, ff_p254_t(c).data, mod_p254_bn));
         });
   });
 }
 
-sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
-                                   ff_p256_t *twiddles, const uint64_t rows,
+sycl::event twiddle_multiplication(sycl::queue &q, ff_p254_t *vec,
+                                   ff_p254_t *twiddles, const uint64_t rows,
                                    const uint64_t cols, const uint64_t width,
                                    const uint64_t wg_size,
                                    std::vector<sycl::event> evts) {
   assert(cols == width || 2 * cols == width);
 
   return q.submit([&](sycl::handler &h) {
-    sycl::accessor<ff_p256_t, 1, sycl::access_mode::read_write,
+    sycl::accessor<ff_p254_t, 1, sycl::access_mode::read_write,
                    sycl::target::local>
         lds{sycl::range<1>{1}, h};
 
@@ -180,13 +180,13 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
           // from local memory
           *(vec + r * width + c) =
               *(vec + r * width + c) *
-              static_cast<ff_p256_t>(
-                  cbn::mod_exp(lds[0].data, ff_p256_t(c).data, mod_p256_bn));
+              static_cast<ff_p254_t>(
+                  cbn::mod_exp(lds[0].data, ff_p254_t(c).data, mod_p254_bn));
         });
   });
 }
 
-sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
+sycl::event row_wise_transform(sycl::queue &q, ff_p254_t *vec, ff_p254_t *omega,
                                const uint64_t rows, const uint64_t cols,
                                const uint64_t width, const uint64_t wg_size,
                                std::vector<sycl::event> evts) {
@@ -228,13 +228,13 @@ sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
             const uint64_t q = cols / p;
 
             uint64_t k_rev = bit_rev(k, log_2_dim) % q;
-            ff_p256_t ω = static_cast<ff_p256_t>(cbn::mod_exp(
-                (*omega).data, ff_p256_t(p * k_rev).data, mod_p256_bn));
+            ff_p254_t ω = static_cast<ff_p254_t>(cbn::mod_exp(
+                (*omega).data, ff_p254_t(p * k_rev).data, mod_p254_bn));
 
             if (k < (k ^ p)) {
-              ff_p256_t tmp_k = *(vec + r * width + k);
-              ff_p256_t tmp_k_p = *(vec + r * width + (k ^ p));
-              ff_p256_t tmp_k_p_ω = tmp_k_p * ω;
+              ff_p254_t tmp_k = *(vec + r * width + k);
+              ff_p254_t tmp_k_p = *(vec + r * width + (k ^ p));
+              ff_p254_t tmp_k_p_ω = tmp_k_p * ω;
 
               *(vec + r * width + k) = tmp_k + tmp_k_p_ω;
               *(vec + r * width + (k ^ p)) = tmp_k - tmp_k_p_ω;
@@ -257,8 +257,8 @@ sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
           const uint64_t k_perm = permute_index(k, cols);
 
           if (k_perm > k) {
-            ff_p256_t a = *(vec + r * width + k);
-            ff_p256_t b = *(vec + r * width + k_perm);
+            ff_p254_t a = *(vec + r * width + k);
+            ff_p254_t b = *(vec + r * width + k_perm);
 
             *(vec + r * width + k) = b;
             *(vec + r * width + k_perm) = a;
@@ -296,7 +296,7 @@ uint64_t permute_index(uint64_t idx, uint64_t size) {
   return rev_all_bits(idx) >> (64ul - bits);
 }
 
-void six_step_fft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
+void six_step_fft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
                   const uint64_t wg_size) {
   assert((dim & (dim - 1ul)) == 0);
 
@@ -312,16 +312,16 @@ void six_step_fft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
   assert(n1 == n2 || n2 == 2 * n1);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
-  ff_p256_t *vec_ = static_cast<ff_p256_t *>(
-      sycl::malloc_device(sizeof(ff_p256_t) * n * n, q));
-  ff_p256_t *twiddles =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t) * n2, q));
-  ff_p256_t *omega_dim =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
-  ff_p256_t *omega_n1 =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
-  ff_p256_t *omega_n2 =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
+  ff_p254_t *vec_ = static_cast<ff_p254_t *>(
+      sycl::malloc_device(sizeof(ff_p254_t) * n * n, q));
+  ff_p254_t *twiddles =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n2, q));
+  ff_p254_t *omega_dim =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
+  ff_p254_t *omega_n1 =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
+  ff_p254_t *omega_n2 =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
 
   // compute i-th root of unity, where n = {dim, n1, n2}
   sycl::event evt_0 =
@@ -377,7 +377,7 @@ void six_step_fft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
   sycl::free(omega_n2, q);
 }
 
-void six_step_ifft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
+void six_step_ifft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
                    const uint64_t wg_size) {
   assert((dim & (dim - 1ul)) == 0);
 
@@ -391,35 +391,35 @@ void six_step_ifft(sycl::queue &q, ff_p256_t *vec, const uint64_t dim,
   assert(n1 == n2 || n2 == 2 * n1);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
-  ff_p256_t *vec_ = static_cast<ff_p256_t *>(
-      sycl::malloc_device(sizeof(ff_p256_t) * n * n, q));
-  ff_p256_t *twiddles =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t) * n2, q));
-  ff_p256_t *omega_dim_inv =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
-  ff_p256_t *omega_n1_inv =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
-  ff_p256_t *omega_n2_inv =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
-  ff_p256_t *omega_domain_size_inv =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t), q));
+  ff_p254_t *vec_ = static_cast<ff_p254_t *>(
+      sycl::malloc_device(sizeof(ff_p254_t) * n * n, q));
+  ff_p254_t *twiddles =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n2, q));
+  ff_p254_t *omega_dim_inv =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
+  ff_p254_t *omega_n1_inv =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
+  ff_p254_t *omega_n2_inv =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
+  ff_p254_t *omega_domain_size_inv =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
 
   // compute inverse of i-th root of unity, where n = {dim, n1, n2}
   sycl::event evt_0 = q.single_task([=]() {
-    *omega_dim_inv = static_cast<ff_p256_t>(
-        cbn::mod_inv(get_root_of_unity(log_2_dim).data, mod_p256_bn));
+    *omega_dim_inv = static_cast<ff_p254_t>(
+        cbn::mod_inv(get_root_of_unity(log_2_dim).data, mod_p254_bn));
   });
   sycl::event evt_1 = q.single_task([=]() {
-    *omega_n1_inv = static_cast<ff_p256_t>(
-        cbn::mod_inv(get_root_of_unity(log_2_n1).data, mod_p256_bn));
+    *omega_n1_inv = static_cast<ff_p254_t>(
+        cbn::mod_inv(get_root_of_unity(log_2_n1).data, mod_p254_bn));
   });
   sycl::event evt_2 = q.single_task([=]() {
-    *omega_n2_inv = static_cast<ff_p256_t>(
-        cbn::mod_inv(get_root_of_unity(log_2_n2).data, mod_p256_bn));
+    *omega_n2_inv = static_cast<ff_p254_t>(
+        cbn::mod_inv(get_root_of_unity(log_2_n2).data, mod_p254_bn));
   });
   sycl::event evt_3 = q.single_task([=]() {
     *omega_domain_size_inv =
-        static_cast<ff_p256_t>(cbn::mod_inv(ff_p256_t(dim).data, mod_p256_bn));
+        static_cast<ff_p254_t>(cbn::mod_inv(ff_p254_t(dim).data, mod_p254_bn));
     ;
   });
 

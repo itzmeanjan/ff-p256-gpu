@@ -1,32 +1,32 @@
 #include <test.hpp>
 
 void test_two_adic_root_of_unity() {
-  ff_p256_t one(1_ZL);
-  ff_p256_t mod(mod_p256);
-  ff_p256_t t(268435456_ZL); // 1 << 28
-  ff_p256_t k = (mod - one) / t;
+  ff_p254_t one(1_ZL);
+  ff_p254_t mod(mod_p254);
+  ff_p254_t t(268435456_ZL); // 1 << 28
+  ff_p254_t k = (mod - one) / t;
 
-  assert(static_cast<ff_p256_t>(cbn::mod_exp(
-             GENERATOR.data, k.data, mod_p256_bn)) == TWO_ADIC_ROOT_OF_UNITY);
+  assert(static_cast<ff_p254_t>(cbn::mod_exp(
+             GENERATOR.data, k.data, mod_p254_bn)) == TWO_ADIC_ROOT_OF_UNITY);
 }
 
 void test_get_root_of_unity() {
-  ff_p256_t one(1_ZL);
-  ff_p256_t t_1(268435456_ZL); // 1 << 28
-  ff_p256_t t_2(134217728_ZL); // 1 << 27
-  ff_p256_t root_28 = get_root_of_unity(28);
+  ff_p254_t one(1_ZL);
+  ff_p254_t t_1(268435456_ZL); // 1 << 28
+  ff_p254_t t_2(134217728_ZL); // 1 << 27
+  ff_p254_t root_28 = get_root_of_unity(28);
 
   assert(root_28 == TWO_ADIC_ROOT_OF_UNITY);
-  assert(static_cast<ff_p256_t>(
-             cbn::mod_exp(root_28.data, t_1.data, mod_p256_bn)) == one);
+  assert(static_cast<ff_p254_t>(
+             cbn::mod_exp(root_28.data, t_1.data, mod_p254_bn)) == one);
 
-  ff_p256_t root_27 = get_root_of_unity(27);
-  ff_p256_t exp = static_cast<ff_p256_t>(
-      cbn::mod_exp(root_28.data, cbn::to_big_int(2_ZL), mod_p256_bn));
+  ff_p254_t root_27 = get_root_of_unity(27);
+  ff_p254_t exp = static_cast<ff_p254_t>(
+      cbn::mod_exp(root_28.data, cbn::to_big_int(2_ZL), mod_p254_bn));
 
   assert(root_27 == exp);
-  assert(static_cast<ff_p256_t>(
-             cbn::mod_exp(root_27.data, t_2.data, mod_p256_bn)) == one);
+  assert(static_cast<ff_p254_t>(
+             cbn::mod_exp(root_27.data, t_2.data, mod_p254_bn)) == one);
 }
 
 void test_matrix_transposed_initialise(sycl::queue &q, const uint64_t dim,
@@ -42,13 +42,13 @@ void test_matrix_transposed_initialise(sycl::queue &q, const uint64_t dim,
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
   // n1 x n2 matrix
-  ff_p256_t *vec_src =
-      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t) * dim, q));
+  ff_p254_t *vec_src =
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
   // n x n matrix, padded with zeros if n2 > n1
-  ff_p256_t *vec_dst = static_cast<ff_p256_t *>(
-      sycl::malloc_shared(sizeof(ff_p256_t) * n * n, q));
+  ff_p254_t *vec_dst = static_cast<ff_p254_t *>(
+      sycl::malloc_shared(sizeof(ff_p254_t) * n * n, q));
 
-  sycl::event evt_0 = q.memset(vec_dst, 0, sizeof(ff_p256_t) * n * n);
+  sycl::event evt_0 = q.memset(vec_dst, 0, sizeof(ff_p254_t) * n * n);
   prepare_random_vector(vec_src, dim);
   matrix_transposed_initialise(q, vec_src, vec_dst, n2, n1, n, wg_size, {evt_0})
       .wait();
@@ -72,13 +72,13 @@ void test_matrix_transposed_initialise(sycl::queue &q, const uint64_t dim,
 
 void test_matrix_transpose(sycl::queue &q, const uint64_t dim,
                            const uint64_t wg_size) {
-  ff_p256_t *vec_a = static_cast<ff_p256_t *>(
-      sycl::malloc_shared(sizeof(ff_p256_t) * dim * dim, q));
-  ff_p256_t *vec_b = static_cast<ff_p256_t *>(
-      sycl::malloc_shared(sizeof(ff_p256_t) * dim * dim, q));
+  ff_p254_t *vec_a = static_cast<ff_p254_t *>(
+      sycl::malloc_shared(sizeof(ff_p254_t) * dim * dim, q));
+  ff_p254_t *vec_b = static_cast<ff_p254_t *>(
+      sycl::malloc_shared(sizeof(ff_p254_t) * dim * dim, q));
 
   prepare_random_vector(vec_a, dim * dim);
-  sycl::event evt_0 = q.memcpy(vec_b, vec_a, sizeof(ff_p256_t) * dim * dim);
+  sycl::event evt_0 = q.memcpy(vec_b, vec_a, sizeof(ff_p254_t) * dim * dim);
 
   sycl::event evt_1 = matrix_transpose(q, vec_b, dim, {evt_0});
   sycl::event evt_2 = matrix_transpose(q, vec_b, dim, {evt_1});
@@ -104,20 +104,20 @@ void test_compute_twiddles(sycl::queue &q, const uint64_t dim,
   assert(n1 == n2 || n2 == 2 * n1);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
-  ff_p256_t *twiddles =
-      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t) * n, q));
-  ff_p256_t *omega =
-      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t), q));
+  ff_p254_t *twiddles =
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * n, q));
+  ff_p254_t *omega =
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t), q));
 
   sycl::event evt_0 =
       q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
   sycl::event evt_1 = compute_twiddles(q, twiddles, omega, n, wg_size, {evt_0});
   evt_1.wait();
 
-  ff_p256_t ω = get_root_of_unity(log_2_dim);
+  ff_p254_t ω = get_root_of_unity(log_2_dim);
   for (uint64_t i = 0; i < n; i++) {
-    assert(*(twiddles + i) == static_cast<ff_p256_t>(cbn::mod_exp(
-                                  ω.data, ff_p256_t(i).data, mod_p256_bn)));
+    assert(*(twiddles + i) == static_cast<ff_p254_t>(cbn::mod_exp(
+                                  ω.data, ff_p254_t(i).data, mod_p254_bn)));
   }
 
   sycl::free(twiddles, q);
@@ -136,14 +136,14 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
   assert(n1 == n2 || n2 == 2 * n1);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
-  ff_p256_t *vec_src = static_cast<ff_p256_t *>(
-      sycl::malloc_shared(sizeof(ff_p256_t) * n * n, q));
-  ff_p256_t *vec_dst = static_cast<ff_p256_t *>(
-      sycl::malloc_shared(sizeof(ff_p256_t) * n * n, q));
-  ff_p256_t *twiddles =
-      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t) * n, q));
-  ff_p256_t *omega =
-      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t), q));
+  ff_p254_t *vec_src = static_cast<ff_p254_t *>(
+      sycl::malloc_shared(sizeof(ff_p254_t) * n * n, q));
+  ff_p254_t *vec_dst = static_cast<ff_p254_t *>(
+      sycl::malloc_shared(sizeof(ff_p254_t) * n * n, q));
+  ff_p254_t *twiddles =
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * n, q));
+  ff_p254_t *omega =
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t), q));
 
   sycl::event evt_0 =
       q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
@@ -151,7 +151,7 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
 
   prepare_random_vector(vec_src, n * n);
 
-  sycl::event evt_2 = q.memcpy(vec_dst, vec_src, sizeof(ff_p256_t) * n * n);
+  sycl::event evt_2 = q.memcpy(vec_dst, vec_src, sizeof(ff_p254_t) * n * n);
   sycl::event evt_3 = twiddle_multiplication(q, vec_src, twiddles, n2, n1, n,
                                              wg_size, {evt_1, evt_2});
 
@@ -161,8 +161,8 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
     for (uint64_t j = 0; j < n1; j++) {
       assert(*(vec_src + i * n + j) ==
              *(vec_dst + i * n + j) *
-                 static_cast<ff_p256_t>(cbn::mod_exp(
-                     (*omega).data, ff_p256_t(i * j).data, mod_p256_bn)));
+                 static_cast<ff_p254_t>(cbn::mod_exp(
+                     (*omega).data, ff_p254_t(i * j).data, mod_p254_bn)));
     }
   }
 
@@ -178,19 +178,19 @@ void test_six_step_fft_ifft(sycl::queue &q, const uint64_t dim,
   uint64_t log_2_dim = (uint64_t)sycl::log2((float)dim);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
-  ff_p256_t *vec_src =
-      static_cast<ff_p256_t *>(sycl::malloc_shared(sizeof(ff_p256_t) * dim, q));
-  ff_p256_t *vec_fwd =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t) * dim, q));
-  ff_p256_t *vec_inv =
-      static_cast<ff_p256_t *>(sycl::malloc_device(sizeof(ff_p256_t) * dim, q));
+  ff_p254_t *vec_src =
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
+  ff_p254_t *vec_fwd =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * dim, q));
+  ff_p254_t *vec_inv =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * dim, q));
 
   prepare_random_vector(vec_src, dim);
 
-  q.memcpy(vec_fwd, vec_src, sizeof(ff_p256_t) * dim).wait();
+  q.memcpy(vec_fwd, vec_src, sizeof(ff_p254_t) * dim).wait();
   six_step_fft(q, vec_fwd, dim, wg_size);
 
-  q.memcpy(vec_inv, vec_fwd, sizeof(ff_p256_t) * dim).wait();
+  q.memcpy(vec_inv, vec_fwd, sizeof(ff_p254_t) * dim).wait();
   six_step_ifft(q, vec_inv, dim, wg_size);
 
   for (uint64_t i = 0; i < dim; i++) {

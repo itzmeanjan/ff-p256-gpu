@@ -2,4 +2,4 @@
 #include <ntt.hpp>
 #include <random>
 
-void prepare_random_vector(ff_p256_t *vec, uint64_t n);
+void prepare_random_vector(ff_p254_t *vec, uint64_t n);
