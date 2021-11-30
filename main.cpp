@@ -29,5 +29,8 @@ int main(int argc, char **argv) {
   test_twiddle_multiplication(q, 1ul << 24, 1ul << 7);
   std::cout << "passed twiddle multiplication tests !" << std::endl;
 
+  test_six_step_fft_ifft(q, 1ul << 23, 1ul << 7);
+  std::cout << "passed fft/ifft tests !" << std::endl;
+
   return 0;
 }
