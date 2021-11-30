@@ -1,7 +1,6 @@
 CXX = dpcpp
 CXXFLAGS = -std=c++20 -Wall
 SYCLFLAGS = -fsycl
-SYCLAOTFLAGS = -fsycl-default-sub-group-size 32
 INCLUDES = -I./include
 PROG = run
 

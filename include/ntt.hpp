@@ -81,6 +81,6 @@ sycl::event row_wise_transform(sycl::queue &q, ff_p256_t *vec, ff_p256_t *omega,
 // Some utility function for index manipulation
 // taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L190-L217
-uint64_t bit_rev(uint64_t v, uint64_t max_bit_width);
-uint64_t rev_all_bits(uint64_t n);
-uint64_t permute_index(uint64_t idx, uint64_t size);
+SYCL_EXTERNAL uint64_t bit_rev(uint64_t v, uint64_t max_bit_width);
+SYCL_EXTERNAL uint64_t rev_all_bits(uint64_t n);
+SYCL_EXTERNAL uint64_t permute_index(uint64_t idx, uint64_t size);

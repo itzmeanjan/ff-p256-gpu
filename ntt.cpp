@@ -18,7 +18,7 @@ sycl::event matrix_transposed_initialise(
     h.parallel_for<class kernelMatrixTransposedInitialise>(
         sycl::nd_range<2>{sycl::range<2>{rows, cols},
                           sycl::range<2>{1, wg_size}},
-        [=](sycl::nd_item<2> it) {
+        [=](sycl::nd_item<2> it) [[intel::reqd_sub_group_size(32)]] {
           sycl::sub_group sg = it.get_sub_group();
 
           const size_t r = it.get_global_id(0);
@@ -123,7 +123,7 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p256_t *twiddles,
     h.depends_on(evts);
     h.parallel_for<class kernelComputeTwiddles>(
         sycl::nd_range<1>{sycl::range<1>{dim}, sycl::range<1>{wg_size}},
-        [=](sycl::nd_item<1> it) {
+        [=](sycl::nd_item<1> it) [[intel::reqd_sub_group_size(32)]] {
           sycl::group<1> grp = it.get_group();
 
           // only work-group leader reads from global memory
@@ -161,7 +161,7 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p256_t *vec,
     h.parallel_for<class kernelTwiddleMultiplication>(
         sycl::nd_range<2>{sycl::range<2>{rows, cols},
                           sycl::range<2>{1, wg_size}},
-        [=](sycl::nd_item<2> it) {
+        [=](sycl::nd_item<2> it) [[intel::reqd_sub_group_size(32)]] {
           const uint64_t r = it.get_global_id(0);
           const uint64_t c = it.get_global_id(1);
           sycl::group<2> grp = it.get_group();
