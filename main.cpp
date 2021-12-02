@@ -1,6 +1,7 @@
 #include <bench_ntt.hpp>
 #include <iostream>
 #include <test.hpp>
+#include <iomanip>
 
 int main(int argc, char **argv) {
   sycl::device d{sycl::default_selector{}};

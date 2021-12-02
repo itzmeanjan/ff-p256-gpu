@@ -10,9 +10,9 @@ int64_t benchmark_six_step_fft(sycl::queue &q, const uint64_t dim,
   prepare_random_vector(vec_h, dim);
   q.memcpy(vec_d, vec_h, sizeof(ff_p254_t) * dim).wait();
 
-  tp start = std::chrono::steady_clock::now();
+  tp start = std::chrono::system_clock::now();
   six_step_fft(q, vec_d, dim, wg_size);
-  tp end = std::chrono::steady_clock::now();
+  tp end = std::chrono::system_clock::now();
 
   sycl::free(vec_h, q);
   sycl::free(vec_d, q);
@@ -31,9 +31,9 @@ int64_t benchmark_six_step_ifft(sycl::queue &q, const uint64_t dim,
   prepare_random_vector(vec_h, dim);
   q.memcpy(vec_d, vec_h, sizeof(ff_p254_t) * dim).wait();
 
-  tp start = std::chrono::steady_clock::now();
+  tp start = std::chrono::system_clock::now();
   six_step_ifft(q, vec_d, dim, wg_size);
-  tp end = std::chrono::steady_clock::now();
+  tp end = std::chrono::system_clock::now();
 
   sycl::free(vec_h, q);
   sycl::free(vec_d, q);
