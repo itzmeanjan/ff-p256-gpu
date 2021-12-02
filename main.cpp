@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
   }
 
 #else // do nothing useful !
-  std::cout << "Pass -Dtest or -Dbenchmark during compilation !" << std::endl;
+  std::cout << "Check https://github.com/itzmeanjan/ff-p254-gpu/blob/288091435f7af607cf4681ebad54667effc4ecbc/Makefile#L8-L19" << std::endl;
 #endif
 
   return 0;

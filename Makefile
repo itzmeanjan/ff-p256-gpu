@@ -17,7 +17,7 @@ PROG = run
 # if nothing is set, none is used, which results into
 # compiling binary which neither runs test cases nor runs
 # benchmark suite !
-DFLAGS = -D$(shell echo $(or $(DO_RUN),none) | tr a-z A-Z)
+DFLAGS = -D$(shell echo $(or $(DO_RUN),nothing) | tr a-z A-Z)
 
 $(PROG): main.o test.o ntt.o utils.o bench_ntt.o
 	$(CXX) $(SYCLFLAGS) $^ -o $@

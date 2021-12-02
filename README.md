@@ -74,10 +74,17 @@ sudo apt-get install libstdc++-10-dev
 
 ## Usage
 
-For running test cases and benchmark suite, I'm assuming you're targeting Nvidia GPU
+For running test cases
 
 ```bash
-make cuda
+DO_RUN=test make cuda
+./run
+```
+
+For running benchmark suite
+
+```bash
+DO_RUN=benchmark make cuda
 ./run
 ```
 

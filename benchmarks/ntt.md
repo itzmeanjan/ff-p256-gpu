@@ -5,7 +5,7 @@ I had access to Nvidia Tesla V100 GPU, so I ran benchmark suite with CUDA backen
 > Note: Following numbers don't include time required to transfer input/ output in between host and device.
 
 ```bash
-make cuda && ./run
+DO_RUN=benchmark make cuda && ./run
 
 running on Tesla V100-SXM2-16GB
 ```
