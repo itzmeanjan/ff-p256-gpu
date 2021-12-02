@@ -1,3 +1,4 @@
+#include <bench_ntt.hpp>
 #include <iostream>
 #include <test.hpp>
 
@@ -31,6 +32,30 @@ int main(int argc, char **argv) {
 
   test_six_step_fft_ifft(q, 1ul << 23, 1ul << 7);
   std::cout << "passed fft/ifft tests !" << std::endl;
+
+  std::cout << "\nSix-Step FFT\n" << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 12; dim <= 24; dim++) {
+    int64_t tm = benchmark_six_step_fft(q, 1ul << dim, 1 << 6);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  std::cout << "\nSix-Step (I)FFT\n" << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 12; dim <= 24; dim++) {
+    int64_t tm = benchmark_six_step_ifft(q, 1ul << dim, 1 << 6);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
 
   return 0;
 }
