@@ -181,9 +181,9 @@ void test_six_step_fft_ifft(sycl::queue &q, const uint64_t dim,
   ff_p254_t *vec_src =
       static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
   ff_p254_t *vec_fwd =
-      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * dim, q));
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
   ff_p254_t *vec_inv =
-      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * dim, q));
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
 
   prepare_random_vector(vec_src, dim);
 
