@@ -9,6 +9,8 @@ int main(int argc, char **argv) {
   std::cout << "running on " << d.get_info<sycl::info::device::name>() << "\n"
             << std::endl;
 
+#if defined TEST // only run test cases !
+
   test_two_adic_root_of_unity();
   test_get_root_of_unity();
   std::cout << "passed prime field tests !" << std::endl;
@@ -33,6 +35,8 @@ int main(int argc, char **argv) {
 
   test_six_step_fft_ifft(q, 1ul << 23, 1ul << 7);
   std::cout << "passed fft/ifft tests !" << std::endl;
+
+#elif defined BENCHMARK // only run benchmarks !
 
   // FFT benchmark variations ( based on whether data transfer cost is included
   // or not )
@@ -149,6 +153,10 @@ int main(int argc, char **argv) {
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
               << std::endl;
   }
+
+#else // do nothing useful !
+  std::cout << "Pass -Dtest or -Dbenchmark during compilation !" << std::endl;
+#endif
 
   return 0;
 }

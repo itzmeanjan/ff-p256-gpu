@@ -5,6 +5,20 @@ SYCLCUDAFLAGS = -fsycl-targets=nvptx64-nvidia-cuda
 INCLUDES = -I./include
 PROG = run
 
+# expects user to set DO_RUN variable to either of
+# {test, benchmark}
+#
+# If `DO_RUN=test make` is invoked, compiled binary will
+# run test cases only
+#
+# On other hand, if `DO_RUN=benchmark make` is invoked,
+# compiled binary will only run benchmark suite
+#
+# if nothing is set, none is used, which results into
+# compiling binary which neither runs test cases nor runs
+# benchmark suite !
+DFLAGS = -D$(shell echo $(or $(DO_RUN),none) | tr a-z A-Z)
+
 $(PROG): main.o test.o ntt.o utils.o bench_ntt.o
 	$(CXX) $(SYCLFLAGS) $^ -o $@
 
@@ -21,10 +35,10 @@ test.o: test/test.cpp include/test.hpp
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(INCLUDES) -c $<
 
 main.o: main.cpp include/test.hpp include/bench_ntt.hpp
-	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(INCLUDES) -c $<
+	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(DFLAGS) $(INCLUDES) -c $<
 
 aot_cpu:
-	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) -c main.cpp -o main.o $(INCLUDES)
+	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(DFLAGS) -c main.cpp -o main.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) -c utils.cpp -o utils.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) -c test/test.cpp -o test.o $(INCLUDES)
 	@if lscpu | grep -q 'avx512'; then \
@@ -44,7 +58,7 @@ aot_cpu:
 	fi
 
 aot_gpu:
-	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) -c main.cpp -o main.o $(INCLUDES)
+	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(DFLAGS) -c main.cpp -o main.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) -c utils.cpp -o utils.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) -c test/test.cpp -o test.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(INCLUDES) -fsycl-targets=spir64_gen-unknown-unknown-sycldevice -Xs "-device 0x4905" bench_ntt.cpp ntt.cpp test.o utils.o main.o
@@ -58,7 +72,7 @@ format:
 cuda:
 	# make sure you've built `clang++` with CUDA support
 	# check https://intel.github.io/llvm-docs/GetStartedGuide.html#build-dpc-toolchain-with-support-for-nvidia-cuda
-	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(SYCLCUDAFLAGS) -c main.cpp -o main.o $(INCLUDES)
+	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(SYCLCUDAFLAGS) $(DFLAGS) -c main.cpp -o main.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(SYCLCUDAFLAGS) -c utils.cpp -o utils.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(SYCLCUDAFLAGS) -c test/test.cpp -o test.o $(INCLUDES)
 	$(CXX) $(CXXFLAGS) $(SYCLFLAGS) $(SYCLCUDAFLAGS) -c bench_ntt.cpp -o bench_ntt.o $(INCLUDES)
