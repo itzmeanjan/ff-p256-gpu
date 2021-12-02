@@ -6,42 +6,122 @@ I had access to Nvidia Tesla V100 GPU, so I ran benchmark suite with CUDA backen
 
 ```bash
 make cuda && ./run
+
+running on Tesla V100-SXM2-16GB
+```
+
+### NTT
+
+```bash
+Six-Step FFT (without data transfer cost)
+
+  dimension		          total
+    65536		         18.336 ms
+   131072		         18.305 ms
+   262144		         34.144 ms
+   524288		         68.081 ms
+  1048576		        135.881 ms
+  2097152		        273.544 ms
+  4194304		        559.814 ms
+  8388608		        1154.44 ms
 ```
 
 ```bash
-running on Tesla V100-SXM2-16GB
-
-Six-Step FFT
+Six-Step FFT (with host -> device data transfer cost)
 
   dimension		          total
-     4096		          9.183 ms
-     8192		          1.584 ms
-    16384		           2.21 ms
-    32768		          4.748 ms
-    65536		          9.629 ms
-   131072		         18.169 ms
-   262144		         34.227 ms
-   524288		         67.973 ms
-  1048576		        134.074 ms
-  2097152		        273.136 ms
-  4194304		        559.252 ms
-  8388608		        1154.74 ms
- 16777216		        2370.77 ms
+    65536		          9.401 ms
+   131072		         17.686 ms
+   262144		         33.732 ms
+   524288		         67.518 ms
+  1048576		        136.056 ms
+  2097152		        279.123 ms
+  4194304		         571.29 ms
+  8388608		        1179.25 ms
+```
 
-Six-Step (I)FFT
+```bash
+Six-Step FFT (with device -> host data transfer cost)
 
   dimension		          total
-     4096		          1.819 ms
-     8192		          2.026 ms
-    16384		          2.577 ms
-    32768		          5.093 ms
-    65536		          9.683 ms
-   131072		         18.139 ms
-   262144		          34.15 ms
-   524288		          70.31 ms
-  1048576		         137.57 ms
-  2097152		        279.791 ms
-  4194304		        573.536 ms
-  8388608		        1182.05 ms
- 16777216		        2424.42 ms
+    65536		          9.338 ms
+   131072		         17.556 ms
+   262144		         33.626 ms
+   524288		         67.541 ms
+  1048576		        135.421 ms
+  2097152		        278.522 ms
+  4194304		        569.943 ms
+  8388608		           1176 ms
+```
+
+```bash
+Six-Step FFT (with host <-> device data transfer cost)
+
+  dimension		          total
+    65536		          9.661 ms
+   131072		         18.006 ms
+   262144		         34.313 ms
+   524288		         71.073 ms
+  1048576		        140.953 ms
+  2097152		         284.84 ms
+  4194304		        581.876 ms
+  8388608		        1198.76 ms
+```
+
+### INTT
+
+```bash
+Six-Step IFFT (without data transfer cost)
+
+  dimension		          total
+    65536		         10.034 ms
+   131072		         18.154 ms
+   262144		         34.154 ms
+   524288		         68.342 ms
+  1048576		        136.843 ms
+  2097152		        279.982 ms
+  4194304		        572.888 ms
+  8388608		        1181.71 ms
+```
+
+```bash
+Six-Step IFFT (with host -> device data transfer cost)
+
+  dimension		          total
+    65536		         10.163 ms
+   131072		         18.754 ms
+   262144		          35.01 ms
+   524288		         69.904 ms
+  1048576		        140.006 ms
+  2097152		        290.209 ms
+  4194304		        584.764 ms
+  8388608		        1204.64 ms
+```
+
+```bash
+Six-Step IFFT (with device -> host data transfer cost)
+
+  dimension		          total
+    65536		         10.142 ms
+   131072		         18.551 ms
+   262144		         34.803 ms
+   524288		         69.593 ms
+  1048576		        139.473 ms
+  2097152		        285.581 ms
+  4194304		        583.526 ms
+  8388608		        1202.13 ms
+```
+
+```bash
+Six-Step IFFT (with host <-> device data transfer cost)
+
+  dimension		          total
+    65536		         10.501 ms
+   131072		         18.916 ms
+   262144		         35.704 ms
+   524288		         71.154 ms
+  1048576		        142.749 ms
+  2097152		          291.9 ms
+  4194304		        596.034 ms
+  8388608		           1229 ms
 ```
