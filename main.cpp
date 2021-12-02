@@ -1,7 +1,7 @@
 #include <bench_ntt.hpp>
+#include <iomanip>
 #include <iostream>
 #include <test.hpp>
-#include <iomanip>
 
 int main(int argc, char **argv) {
   sycl::device d{sycl::default_selector{}};
@@ -34,24 +34,116 @@ int main(int argc, char **argv) {
   test_six_step_fft_ifft(q, 1ul << 23, 1ul << 7);
   std::cout << "passed fft/ifft tests !" << std::endl;
 
-  std::cout << "\nSix-Step FFT\n" << std::endl;
+  // FFT benchmark variations ( based on whether data transfer cost is included
+  // or not )
+
+  std::cout << "\nSix-Step FFT (without data transfer cost)\n" << std::endl;
   std::cout << std::setw(11) << "dimension"
             << "\t\t" << std::setw(15) << "total" << std::endl;
 
-  for (uint dim = 12; dim <= 24; dim++) {
-    int64_t tm = benchmark_six_step_fft(q, 1ul << dim, 1 << 6);
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm =
+        benchmark_six_step_fft(q, 1ul << dim, 1 << 6, data_transfer_t::none);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
               << std::endl;
   }
 
-  std::cout << "\nSix-Step (I)FFT\n" << std::endl;
+  std::cout << "\nSix-Step FFT (with host -> device data transfer cost)\n"
+            << std::endl;
   std::cout << std::setw(11) << "dimension"
             << "\t\t" << std::setw(15) << "total" << std::endl;
 
-  for (uint dim = 12; dim <= 24; dim++) {
-    int64_t tm = benchmark_six_step_ifft(q, 1ul << dim, 1 << 6);
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm = benchmark_six_step_fft(q, 1ul << dim, 1 << 6,
+                                        data_transfer_t::only_host_to_device);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  std::cout << "\nSix-Step FFT (with device -> host data transfer cost)\n"
+            << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm = benchmark_six_step_fft(q, 1ul << dim, 1 << 6,
+                                        data_transfer_t::only_device_to_host);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  std::cout << "\nSix-Step FFT (with host <-> device data transfer cost)\n"
+            << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm =
+        benchmark_six_step_fft(q, 1ul << dim, 1 << 6, data_transfer_t::both);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  // IFFT benchmark variations ( based on whether data transfer cost is included
+  // or not )
+
+  std::cout << "\nSix-Step IFFT (without data transfer cost)\n" << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm =
+        benchmark_six_step_ifft(q, 1ul << dim, 1 << 6, data_transfer_t::none);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  std::cout << "\nSix-Step IFFT (with host -> device data transfer cost)\n"
+            << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm = benchmark_six_step_ifft(q, 1ul << dim, 1 << 6,
+                                         data_transfer_t::only_host_to_device);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  std::cout << "\nSix-Step IFFT (with device -> host data transfer cost)\n"
+            << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm = benchmark_six_step_ifft(q, 1ul << dim, 1 << 6,
+                                         data_transfer_t::only_device_to_host);
+
+    std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
+              << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
+              << std::endl;
+  }
+
+  std::cout << "\nSix-Step IFFT (with host <-> device data transfer cost)\n"
+            << std::endl;
+  std::cout << std::setw(11) << "dimension"
+            << "\t\t" << std::setw(15) << "total" << std::endl;
+
+  for (uint dim = 16; dim <= 23; dim++) {
+    int64_t tm =
+        benchmark_six_step_ifft(q, 1ul << dim, 1 << 6, data_transfer_t::both);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
