@@ -107,7 +107,7 @@ void test_compute_twiddles(sycl::queue &q, const uint64_t dim,
   ff_p254_t *twiddles =
       static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * n, q));
   ff_p254_t *omega =
-      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t), q));
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
 
   sycl::event evt_0 =
       q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
@@ -139,11 +139,11 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
   ff_p254_t *vec_src = static_cast<ff_p254_t *>(
       sycl::malloc_shared(sizeof(ff_p254_t) * n * n, q));
   ff_p254_t *vec_dst = static_cast<ff_p254_t *>(
-      sycl::malloc_shared(sizeof(ff_p254_t) * n * n, q));
+      sycl::malloc_host(sizeof(ff_p254_t) * n * n, q));
   ff_p254_t *twiddles =
-      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * n, q));
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n, q));
   ff_p254_t *omega =
-      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t), q));
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
 
   sycl::event evt_0 =
       q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
@@ -179,9 +179,9 @@ void test_six_step_fft_ifft(sycl::queue &q, const uint64_t dim,
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
   ff_p254_t *vec_src =
-      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
+      static_cast<ff_p254_t *>(sycl::malloc_host(sizeof(ff_p254_t) * dim, q));
   ff_p254_t *vec_fwd =
-      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * dim, q));
   ff_p254_t *vec_inv =
       static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
 
