@@ -92,38 +92,6 @@ void test_matrix_transpose(sycl::queue &q, const uint64_t dim,
   sycl::free(vec_b, q);
 }
 
-void test_compute_twiddles(sycl::queue &q, const uint64_t dim,
-                           const uint64_t wg_size) {
-  assert((dim & (dim - 1ul)) == 0);
-
-  uint64_t log_2_dim = (uint64_t)sycl::log2((float)dim);
-  uint64_t n1 = 1 << (log_2_dim / 2);
-  uint64_t n2 = dim / n1;
-  uint64_t n = sycl::max(n1, n2);
-
-  assert(n1 == n2 || n2 == 2 * n1);
-  assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
-
-  ff_p254_t *twiddles =
-      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * n, q));
-  ff_p254_t *omega =
-      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
-
-  sycl::event evt_0 =
-      q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
-  sycl::event evt_1 = compute_twiddles(q, twiddles, omega, n, wg_size, {evt_0});
-  evt_1.wait();
-
-  ff_p254_t ω = get_root_of_unity(log_2_dim);
-  for (uint64_t i = 0; i < n; i++) {
-    assert(*(twiddles + i) == static_cast<ff_p254_t>(cbn::mod_exp(
-                                  ω.data, ff_p254_t(i).data, mod_p254_bn)));
-  }
-
-  sycl::free(twiddles, q);
-  sycl::free(omega, q);
-}
-
 void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
                                  const uint64_t wg_size) {
   assert((dim & (dim - 1ul)) == 0);
@@ -138,24 +106,22 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
 
   ff_p254_t *vec_src = static_cast<ff_p254_t *>(
       sycl::malloc_shared(sizeof(ff_p254_t) * n * n, q));
-  ff_p254_t *vec_dst = static_cast<ff_p254_t *>(
-      sycl::malloc_host(sizeof(ff_p254_t) * n * n, q));
+  ff_p254_t *vec_dst =
+      static_cast<ff_p254_t *>(sycl::malloc_host(sizeof(ff_p254_t) * n * n, q));
   ff_p254_t *twiddles =
       static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n, q));
   ff_p254_t *omega =
       static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t), q));
 
-  sycl::event evt_0 =
-      q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
-  sycl::event evt_1 = compute_twiddles(q, twiddles, omega, n, wg_size, {evt_0});
-
   prepare_random_vector(vec_src, n * n);
 
-  sycl::event evt_2 = q.memcpy(vec_dst, vec_src, sizeof(ff_p254_t) * n * n);
-  sycl::event evt_3 = twiddle_multiplication(q, vec_src, twiddles, n2, n1, n,
-                                             wg_size, {evt_1, evt_2});
+  sycl::event evt_0 =
+      q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
+  sycl::event evt_1 = q.memcpy(vec_dst, vec_src, sizeof(ff_p254_t) * n * n);
+  sycl::event evt_2 = twiddle_multiplication(q, vec_src, omega, n2, n1, n,
+                                             wg_size, {evt_0, evt_1});
 
-  evt_3.wait();
+  evt_2.wait();
 
   for (uint64_t i = 0; i < n2; i++) {
     for (uint64_t j = 0; j < n1; j++) {

@@ -27,9 +27,6 @@ int main(int argc, char **argv) {
   test_matrix_transpose(q, 1ul << 10, 1ul << 6);
   std::cout << "passed matrix transposition tests !" << std::endl;
 
-  test_compute_twiddles(q, 1ul << 15, 1ul << 6);
-  std::cout << "passed twiddle compute tests !" << std::endl;
-
   test_twiddle_multiplication(q, 1ul << 15, 1ul << 6);
   std::cout << "passed twiddle multiplication tests ! [rectangular]" << std::endl;
   test_twiddle_multiplication(q, 1ul << 16, 1ul << 6);
