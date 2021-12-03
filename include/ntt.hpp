@@ -41,16 +41,6 @@ sycl::event matrix_transposed_initialise(
 sycl::event matrix_transpose(sycl::queue &q, ff_p254_t *data,
                              const uint64_t dim, std::vector<sycl::event> evts);
 
-// Compute a vector of twiddle factors, by raising ω to power of i, i = [0,
-// rows) when dimension of six step fft matrix is rows x cols
-//
-// Taken from
-// https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L711-L726
-sycl::event compute_twiddles(sycl::queue &q, ff_p254_t *twiddles,
-                             ff_p254_t *omega, const uint64_t dim,
-                             const uint64_t wg_size,
-                             std::vector<sycl::event> evts);
-
 // Exponentiates ω ( read N-th root of unity, when N = NTT domain size )
 // to (r * c), where r = row index, c = column index
 //
@@ -63,7 +53,7 @@ sycl::event compute_twiddles(sycl::queue &q, ff_p254_t *twiddles,
 // Taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L728-L751
 sycl::event twiddle_multiplication(sycl::queue &q, ff_p254_t *vec,
-                                   ff_p254_t *twiddles, const uint64_t rows,
+                                   ff_p254_t *omega, const uint64_t rows,
                                    const uint64_t cols, const uint64_t width,
                                    const uint64_t wg_size,
                                    std::vector<sycl::event> evts);

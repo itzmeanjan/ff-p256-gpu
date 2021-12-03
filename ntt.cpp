@@ -111,42 +111,8 @@ sycl::event matrix_transpose(sycl::queue &q, ff_p254_t *data,
   });
 }
 
-sycl::event compute_twiddles(sycl::queue &q, ff_p254_t *twiddles,
-                             ff_p254_t *omega, const uint64_t dim,
-                             const uint64_t wg_size,
-                             std::vector<sycl::event> evts) {
-  return q.submit([&](sycl::handler &h) {
-    sycl::accessor<ff_p254_t, 1, sycl::access_mode::read_write,
-                   sycl::target::local>
-        lds{sycl::range<1>{1}, h};
-
-    h.depends_on(evts);
-    h.parallel_for<class kernelComputeTwiddles>(
-        sycl::nd_range<1>{sycl::range<1>{dim}, sycl::range<1>{wg_size}}, [=
-    ](sycl::nd_item<1> it) [[intel::reqd_sub_group_size(16)]] {
-          sycl::group<1> grp = it.get_group();
-
-          // only work-group leader reads from global memory
-          // and caches in local memory
-          if (it.get_local_linear_id() == 0) {
-            lds[0] = *omega;
-          }
-
-          // wait until all work-items of work-group reach here
-          sycl::group_barrier(grp);
-
-          const uint64_t c = it.get_global_id(0);
-
-          // now all work-items of some work-group read
-          // same (cached) ω from local memory
-          *(twiddles + c) = static_cast<ff_p254_t>(
-              cbn::mod_exp(lds[0].data, ff_p254_t(c).data, mod_p254_bn));
-        });
-  });
-}
-
 sycl::event twiddle_multiplication(sycl::queue &q, ff_p254_t *vec,
-                                   ff_p254_t *twiddles, const uint64_t rows,
+                                   ff_p254_t *omega, const uint64_t rows,
                                    const uint64_t cols, const uint64_t width,
                                    const uint64_t wg_size,
                                    std::vector<sycl::event> evts) {
@@ -169,7 +135,7 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p254_t *vec,
           // only work-group leader helps in caching
           // twiddle in local memory
           if (it.get_local_linear_id() == 0) {
-            lds[0] = *(twiddles + r);
+            lds[0] = *omega;
           }
 
           // until all work-items of this work-group
@@ -178,10 +144,8 @@ sycl::event twiddle_multiplication(sycl::queue &q, ff_p254_t *vec,
 
           // after that all work-items of work-group reads from cached twiddle
           // from local memory
-          *(vec + r * width + c) =
-              *(vec + r * width + c) *
-              static_cast<ff_p254_t>(
-                  cbn::mod_exp(lds[0].data, ff_p254_t(c).data, mod_p254_bn));
+          *(vec + r * width + c) *= static_cast<ff_p254_t>(
+              cbn::mod_exp(lds[0].data, ff_p254_t(r * c).data, mod_p254_bn));
         });
   });
 }
@@ -314,8 +278,6 @@ void six_step_fft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
 
   ff_p254_t *vec_ = static_cast<ff_p254_t *>(
       sycl::malloc_device(sizeof(ff_p254_t) * n * n, q));
-  ff_p254_t *twiddles =
-      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n2, q));
   ff_p254_t *omega_dim =
       static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
   ff_p254_t *omega_n1 =
@@ -340,10 +302,8 @@ void six_step_fft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
       row_wise_transform(q, vec_, omega_n1, n2, n1, n, wg_size, {evt_1, evt_3});
 
   // Step 3: Multiply by twiddle factors
-  sycl::event evt_5 =
-      compute_twiddles(q, twiddles, omega_dim, n2, wg_size, {evt_0});
-  sycl::event evt_6 = twiddle_multiplication(q, vec_, twiddles, n2, n1, n,
-                                             wg_size, {evt_4, evt_5});
+  sycl::event evt_6 = twiddle_multiplication(q, vec_, omega_dim, n2, n1, n,
+                                             wg_size, {evt_0, evt_4});
 
   // Step 4: Transpose Matrix
   sycl::event evt_7 = matrix_transpose(q, vec_, n, {evt_6});
@@ -371,7 +331,6 @@ void six_step_fft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
   evt_10.wait();
 
   sycl::free(vec_, q);
-  sycl::free(twiddles, q);
   sycl::free(omega_dim, q);
   sycl::free(omega_n1, q);
   sycl::free(omega_n2, q);
@@ -393,8 +352,6 @@ void six_step_ifft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
 
   ff_p254_t *vec_ = static_cast<ff_p254_t *>(
       sycl::malloc_device(sizeof(ff_p254_t) * n * n, q));
-  ff_p254_t *twiddles =
-      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n2, q));
   ff_p254_t *omega_dim_inv =
       static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
   ff_p254_t *omega_n1_inv =
@@ -432,10 +389,8 @@ void six_step_ifft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
                                          wg_size, {evt_1, evt_4});
 
   // Step 3: Multiply by twiddle factors
-  sycl::event evt_6 =
-      compute_twiddles(q, twiddles, omega_dim_inv, n2, wg_size, {evt_0});
-  sycl::event evt_7 = twiddle_multiplication(q, vec_, twiddles, n2, n1, n,
-                                             wg_size, {evt_5, evt_6});
+  sycl::event evt_7 = twiddle_multiplication(q, vec_, omega_dim_inv, n2, n1, n,
+                                             wg_size, {evt_0, evt_5});
 
   // Step 4: Transpose Matrix
   sycl::event evt_8 = matrix_transpose(q, vec_, n, {evt_7});
@@ -465,7 +420,6 @@ void six_step_ifft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
   evt_11.wait();
 
   sycl::free(vec_, q);
-  sycl::free(twiddles, q);
   sycl::free(omega_dim_inv, q);
   sycl::free(omega_n1_inv, q);
   sycl::free(omega_n2_inv, q);
