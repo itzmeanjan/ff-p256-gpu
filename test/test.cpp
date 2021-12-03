@@ -143,7 +143,7 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
   ff_p254_t *twiddles =
       static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * n, q));
   ff_p254_t *omega =
-      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t), q));
+      static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t), q));
 
   sycl::event evt_0 =
       q.single_task([=]() { *omega = get_root_of_unity(log_2_dim); });
