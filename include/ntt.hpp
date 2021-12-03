@@ -79,12 +79,18 @@ SYCL_EXTERNAL uint64_t permute_index(uint64_t idx, uint64_t size);
 //
 // Taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L753-L831
-void six_step_fft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
-                  const uint64_t wg_size);
+sycl::event six_step_fft(sycl::queue &q, ff_p254_t *vec, ff_p254_t *vec_scratch,
+                         ff_p254_t *omega_dim, ff_p254_t *omega_n1,
+                         ff_p254_t *omega_n2, const uint64_t dim,
+                         const uint64_t wg_size, std::vector<sycl::event> evts);
 
 // Six step algorithm based NTT implementation for 254-bit prime field
 //
 // Taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L833-L921
-void six_step_ifft(sycl::queue &q, ff_p254_t *vec, const uint64_t dim,
-                   const uint64_t wg_size);
+sycl::event six_step_ifft(sycl::queue &q, ff_p254_t *vec,
+                          ff_p254_t *vec_scratch, ff_p254_t *omega_dim_inv,
+                          ff_p254_t *omega_n1_inv, ff_p254_t *omega_n2_inv,
+                          ff_p254_t *omega_domain_size_inv, const uint64_t dim,
+                          const uint64_t wg_size,
+                          std::vector<sycl::event> evts);
