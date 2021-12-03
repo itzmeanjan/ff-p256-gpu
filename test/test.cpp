@@ -141,23 +141,40 @@ void test_twiddle_multiplication(sycl::queue &q, const uint64_t dim,
 void test_six_step_fft_ifft(sycl::queue &q, const uint64_t dim,
                             const uint64_t wg_size) {
   assert((dim & (dim - 1ul)) == 0);
+
   uint64_t log_2_dim = (uint64_t)sycl::log2((float)dim);
+  uint64_t n1 = 1 << (log_2_dim / 2);
+  uint64_t n2 = dim / n1;
+  uint64_t n = sycl::max(n1, n2);
+
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
   ff_p254_t *vec_src =
       static_cast<ff_p254_t *>(sycl::malloc_host(sizeof(ff_p254_t) * dim, q));
   ff_p254_t *vec_fwd =
       static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * dim, q));
+  ff_p254_t *vec_scratch = static_cast<ff_p254_t *>(
+      sycl::malloc_device(sizeof(ff_p254_t) * n * n, q));
   ff_p254_t *vec_inv =
       static_cast<ff_p254_t *>(sycl::malloc_shared(sizeof(ff_p254_t) * dim, q));
+  ff_p254_t *omega =
+      static_cast<ff_p254_t *>(sycl::malloc_device(sizeof(ff_p254_t) * 4, q));
 
   prepare_random_vector(vec_src, dim);
 
-  q.memcpy(vec_fwd, vec_src, sizeof(ff_p254_t) * dim).wait();
-  six_step_fft(q, vec_fwd, dim, wg_size);
+  sycl::event evt_0 = q.memcpy(vec_fwd, vec_src, sizeof(ff_p254_t) * dim);
+  sycl::event evt_1 = six_step_fft(q, vec_fwd, vec_scratch, omega + 0,
+                                   omega + 1, omega + 2, dim, wg_size, {evt_0});
 
-  q.memcpy(vec_inv, vec_fwd, sizeof(ff_p254_t) * dim).wait();
-  six_step_ifft(q, vec_inv, dim, wg_size);
+  sycl::event evt_2 = q.submit([&](sycl::handler &h) {
+    h.depends_on(evt_1);
+    h.memcpy(vec_inv, vec_fwd, sizeof(ff_p254_t) * dim);
+  });
+  sycl::event evt_3 =
+      six_step_ifft(q, vec_inv, vec_scratch, omega + 0, omega + 1, omega + 2,
+                    omega + 3, dim, wg_size, {evt_2});
+
+  evt_3.wait();
 
   for (uint64_t i = 0; i < dim; i++) {
     assert(*(vec_src + i) == *(vec_inv + i));
@@ -165,5 +182,7 @@ void test_six_step_fft_ifft(sycl::queue &q, const uint64_t dim,
 
   sycl::free(vec_src, q);
   sycl::free(vec_fwd, q);
+  sycl::free(vec_scratch, q);
   sycl::free(vec_inv, q);
+  sycl::free(omega, q);
 }
