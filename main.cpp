@@ -16,24 +16,26 @@ int main(int argc, char **argv) {
   std::cout << "passed prime field tests !" << std::endl;
 
   // check with rectangular matrix
-  test_matrix_transposed_initialise(q, 1ul << 23, 1ul << 7);
+  test_matrix_transposed_initialise(q, 1ul << 15, 1ul << 6);
+  std::cout << "passed matrix transposed initialisation tests ! [rectangular]" << std::endl;
   // check with square matrix
-  test_matrix_transposed_initialise(q, 1ul << 24, 1ul << 7);
-  std::cout << "passed matrix transposed initialisation tests !" << std::endl;
+  test_matrix_transposed_initialise(q, 1ul << 16, 1ul << 6);
+  std::cout << "passed matrix transposed initialisation tests ! [square]" << std::endl;
 
   // takes square matrix of dim x dim size, transposes twice
   // finally asserts with original matrix
   test_matrix_transpose(q, 1ul << 10, 1ul << 6);
   std::cout << "passed matrix transposition tests !" << std::endl;
 
-  test_compute_twiddles(q, 1ul << 23, 1ul << 7);
+  test_compute_twiddles(q, 1ul << 15, 1ul << 6);
   std::cout << "passed twiddle compute tests !" << std::endl;
 
-  test_twiddle_multiplication(q, 1ul << 23, 1ul << 7);
-  test_twiddle_multiplication(q, 1ul << 24, 1ul << 7);
-  std::cout << "passed twiddle multiplication tests !" << std::endl;
+  test_twiddle_multiplication(q, 1ul << 15, 1ul << 6);
+  std::cout << "passed twiddle multiplication tests ! [rectangular]" << std::endl;
+  test_twiddle_multiplication(q, 1ul << 16, 1ul << 6);
+  std::cout << "passed twiddle multiplication tests ! [square]" << std::endl;
 
-  test_six_step_fft_ifft(q, 1ul << 23, 1ul << 7);
+  test_six_step_fft_ifft(q, 1ul << 17, 1ul << 6);
   std::cout << "passed fft/ifft tests !" << std::endl;
 
 #elif defined BENCHMARK // only run benchmarks !
