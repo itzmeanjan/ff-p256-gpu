@@ -9,7 +9,7 @@ main(int argc, char** argv)
   sycl::default_selector sel{};
   sycl::device d{ sel };
   sycl::context c{ d };
-  sycl::queue q{ c, d };
+  sycl::queue q{ c, d, sycl::property::queue::enable_profiling{} };
 
   std::cout << "running on " << d.get_info<sycl::info::device::name>() << "\n"
             << std::endl;
