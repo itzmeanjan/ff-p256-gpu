@@ -1,7 +1,7 @@
-#include <bench_ntt.hpp>
+#include "bench_ntt.hpp"
+#include "test.hpp"
 #include <iomanip>
 #include <iostream>
-#include <test.hpp>
 
 int
 main(int argc, char** argv)
