@@ -3,9 +3,11 @@
 #include <iostream>
 #include <test.hpp>
 
-int main(int argc, char **argv) {
-  sycl::device d{sycl::default_selector{}};
-  sycl::queue q{d};
+int
+main(int argc, char** argv)
+{
+  sycl::device d{ sycl::default_selector{} };
+  sycl::queue q{ d };
   std::cout << "running on " << d.get_info<sycl::info::device::name>() << "\n"
             << std::endl;
 
@@ -17,10 +19,12 @@ int main(int argc, char **argv) {
 
   // check with rectangular matrix
   test_matrix_transposed_initialise(q, 1ul << 15, 1ul << 6);
-  std::cout << "passed matrix transposed initialisation tests ! [rectangular]" << std::endl;
+  std::cout << "passed matrix transposed initialisation tests ! [rectangular]"
+            << std::endl;
   // check with square matrix
   test_matrix_transposed_initialise(q, 1ul << 16, 1ul << 6);
-  std::cout << "passed matrix transposed initialisation tests ! [square]" << std::endl;
+  std::cout << "passed matrix transposed initialisation tests ! [square]"
+            << std::endl;
 
   // takes square matrix of dim x dim size, transposes twice
   // finally asserts with original matrix
@@ -28,7 +32,8 @@ int main(int argc, char **argv) {
   std::cout << "passed matrix transposition tests !" << std::endl;
 
   test_twiddle_multiplication(q, 1ul << 15, 1ul << 6);
-  std::cout << "passed twiddle multiplication tests ! [rectangular]" << std::endl;
+  std::cout << "passed twiddle multiplication tests ! [rectangular]"
+            << std::endl;
   test_twiddle_multiplication(q, 1ul << 16, 1ul << 6);
   std::cout << "passed twiddle multiplication tests ! [square]" << std::endl;
 
@@ -46,7 +51,7 @@ int main(int argc, char **argv) {
 
   for (uint dim = 16; dim <= 23; dim++) {
     int64_t tm =
-        benchmark_six_step_fft(q, 1ul << dim, 1 << 6, data_transfer_t::none);
+      benchmark_six_step_fft(q, 1ul << dim, 1 << 6, data_transfer_t::none);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -59,8 +64,8 @@ int main(int argc, char **argv) {
             << "\t\t" << std::setw(15) << "total" << std::endl;
 
   for (uint dim = 16; dim <= 23; dim++) {
-    int64_t tm = benchmark_six_step_fft(q, 1ul << dim, 1 << 6,
-                                        data_transfer_t::only_host_to_device);
+    int64_t tm = benchmark_six_step_fft(
+      q, 1ul << dim, 1 << 6, data_transfer_t::only_host_to_device);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -73,8 +78,8 @@ int main(int argc, char **argv) {
             << "\t\t" << std::setw(15) << "total" << std::endl;
 
   for (uint dim = 16; dim <= 23; dim++) {
-    int64_t tm = benchmark_six_step_fft(q, 1ul << dim, 1 << 6,
-                                        data_transfer_t::only_device_to_host);
+    int64_t tm = benchmark_six_step_fft(
+      q, 1ul << dim, 1 << 6, data_transfer_t::only_device_to_host);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -88,7 +93,7 @@ int main(int argc, char **argv) {
 
   for (uint dim = 16; dim <= 23; dim++) {
     int64_t tm =
-        benchmark_six_step_fft(q, 1ul << dim, 1 << 6, data_transfer_t::both);
+      benchmark_six_step_fft(q, 1ul << dim, 1 << 6, data_transfer_t::both);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -104,7 +109,7 @@ int main(int argc, char **argv) {
 
   for (uint dim = 16; dim <= 23; dim++) {
     int64_t tm =
-        benchmark_six_step_ifft(q, 1ul << dim, 1 << 6, data_transfer_t::none);
+      benchmark_six_step_ifft(q, 1ul << dim, 1 << 6, data_transfer_t::none);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -117,8 +122,8 @@ int main(int argc, char **argv) {
             << "\t\t" << std::setw(15) << "total" << std::endl;
 
   for (uint dim = 16; dim <= 23; dim++) {
-    int64_t tm = benchmark_six_step_ifft(q, 1ul << dim, 1 << 6,
-                                         data_transfer_t::only_host_to_device);
+    int64_t tm = benchmark_six_step_ifft(
+      q, 1ul << dim, 1 << 6, data_transfer_t::only_host_to_device);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -131,8 +136,8 @@ int main(int argc, char **argv) {
             << "\t\t" << std::setw(15) << "total" << std::endl;
 
   for (uint dim = 16; dim <= 23; dim++) {
-    int64_t tm = benchmark_six_step_ifft(q, 1ul << dim, 1 << 6,
-                                         data_transfer_t::only_device_to_host);
+    int64_t tm = benchmark_six_step_ifft(
+      q, 1ul << dim, 1 << 6, data_transfer_t::only_device_to_host);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -146,7 +151,7 @@ int main(int argc, char **argv) {
 
   for (uint dim = 16; dim <= 23; dim++) {
     int64_t tm =
-        benchmark_six_step_ifft(q, 1ul << dim, 1 << 6, data_transfer_t::both);
+      benchmark_six_step_ifft(q, 1ul << dim, 1 << 6, data_transfer_t::both);
 
     std::cout << std::setw(9) << std::right << (1ul << dim) << "\t\t"
               << std::setw(15) << std::right << (float)tm / 1000.f << " ms"
@@ -154,7 +159,10 @@ int main(int argc, char **argv) {
   }
 
 #else // do nothing useful !
-  std::cout << "Check https://github.com/itzmeanjan/ff-p254-gpu/blob/288091435f7af607cf4681ebad54667effc4ecbc/Makefile#L8-L19" << std::endl;
+  std::cout << "Check "
+               "https://github.com/itzmeanjan/ff-p254-gpu/blob/"
+               "288091435f7af607cf4681ebad54667effc4ecbc/Makefile#L8-L19"
+            << std::endl;
 #endif
 
   return 0;

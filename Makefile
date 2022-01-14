@@ -67,7 +67,7 @@ clean:
 	find . -name '*.o' -o -name 'a.out' -o -name 'run' -o -name '*.gch' | xargs rm -f
 
 format:
-	find . -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
+	find . -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i -style=Mozilla
 
 cuda:
 	# make sure you've built `clang++` with CUDA support
