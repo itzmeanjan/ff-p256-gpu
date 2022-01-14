@@ -6,8 +6,11 @@
 int
 main(int argc, char** argv)
 {
-  sycl::device d{ sycl::default_selector{} };
-  sycl::queue q{ d };
+  sycl::default_selector sel{};
+  sycl::device d{ sel };
+  sycl::context c{ d };
+  sycl::queue q{ c, d };
+
   std::cout << "running on " << d.get_info<sycl::info::device::name>() << "\n"
             << std::endl;
 
@@ -159,6 +162,10 @@ main(int argc, char** argv)
   }
 
 #else // do nothing useful !
+
+#pragma message(                                                               \
+  "Set **DO_RUN** variable to either `test` or `benchmark` when invoking make !")
+
   std::cout << "Check "
                "https://github.com/itzmeanjan/ff-p254-gpu/blob/"
                "288091435f7af607cf4681ebad54667effc4ecbc/Makefile#L8-L19"
