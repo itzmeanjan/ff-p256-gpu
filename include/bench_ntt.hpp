@@ -2,7 +2,7 @@
 #include "ntt.hpp"
 #include "utils.hpp"
 
-int64_t
+sycl::cl_ulong
 benchmark_six_step_fft(sycl::queue& q,
                        const uint64_t dim,
                        const uint64_t wg_size)
@@ -26,29 +26,29 @@ benchmark_six_step_fft(sycl::queue& q,
   // host to device transfer
   q.memcpy(vec_d, vec_h, sizeof(ff_p254_t) * dim).wait();
 
-  tp start = std::chrono::system_clock::now();
-
   // compute
   std::vector<sycl::event> evts = six_step_fft(
     q, vec_d, vec_scratch, omega + 0, omega + 1, omega + 2, dim, wg_size, {});
 
   evts.at(evts.size() - 1).wait();
 
-  tp end = std::chrono::system_clock::now();
-
   // device to host transfer
   q.memcpy(vec_h, vec_d, sizeof(ff_p254_t) * dim).wait();
+
+  sycl::cl_ulong ts = 0;
+  for (auto evt : evts) {
+    ts += time_event(evt);
+  }
 
   sycl::free(vec_h, q);
   sycl::free(vec_d, q);
   sycl::free(vec_scratch, q);
   sycl::free(omega, q);
 
-  return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-    .count();
+  return ts;
 }
 
-int64_t
+sycl::cl_ulong
 benchmark_six_step_ifft(sycl::queue& q,
                         const uint64_t dim,
                         const uint64_t wg_size)
@@ -72,8 +72,6 @@ benchmark_six_step_ifft(sycl::queue& q,
   // host to device transfer
   q.memcpy(vec_d, vec_h, sizeof(ff_p254_t) * dim).wait();
 
-  tp start = std::chrono::system_clock::now();
-
   // compute
   std::vector<sycl::event> evts = six_step_ifft(q,
                                                 vec_d,
@@ -88,16 +86,18 @@ benchmark_six_step_ifft(sycl::queue& q,
 
   evts.at(evts.size() - 1).wait();
 
-  tp end = std::chrono::system_clock::now();
-
   // device to host transfer
   q.memcpy(vec_h, vec_d, sizeof(ff_p254_t) * dim).wait();
+
+  sycl::cl_ulong ts = 0;
+  for (auto evt : evts) {
+    ts += time_event(evt);
+  }
 
   sycl::free(vec_h, q);
   sycl::free(vec_d, q);
   sycl::free(vec_scratch, q);
   sycl::free(omega, q);
 
-  return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-    .count();
+  return ts;
 }
