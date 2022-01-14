@@ -232,7 +232,7 @@ twiddle_multiplication(sycl::queue& q,
 // Taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L571-L709
 // and used in stripped down form
-sycl::event
+std::vector<sycl::event>
 row_wise_transform(sycl::queue& q,
                    ff_p254_t* vec,
                    ff_p254_t* omega,
@@ -244,8 +244,8 @@ row_wise_transform(sycl::queue& q,
 {
   uint64_t log_2_dim = (uint64_t)sycl::log2((float)cols);
 
-  std::vector<sycl::event> _evts;
-  _evts.reserve(log_2_dim);
+  std::vector<sycl::event> evts_;
+  evts_.reserve(log_2_dim + 1);
 
   // if you change this number, make sure
   // you also change `[[intel::reqd_sub_group_size(Z)]]`
@@ -267,7 +267,7 @@ row_wise_transform(sycl::queue& q,
         // all next kernel submissions
         // depend on just previous kernel submission
         // from body of this loop
-        h.depends_on(_evts.at(log_2_dim - (i + 2)));
+        h.depends_on(evts_.at(log_2_dim - (i + 2)));
       }
 
       h.parallel_for<class kernelCooleyTukeyRowWiseFFT>(
@@ -293,13 +293,13 @@ row_wise_transform(sycl::queue& q,
           }
         });
     });
-    _evts.push_back(evt);
+    evts_.push_back(evt);
   }
 
-  return q.submit([&](sycl::handler& h) {
+  sycl::event evt_0 = q.submit([&](sycl::handler& h) {
     // final reordering kernel depends on very
     // last kernel submission performed in above loop
-    h.depends_on(_evts.at(log_2_dim - 1));
+    h.depends_on(evts_.at(log_2_dim - 1));
     h.parallel_for<class kernelCooleyTukeyRowWiseFFTFinalReorder>(
       sycl::nd_range<2>{ sycl::range<2>{ rows, cols },
                          sycl::range<2>{ 1, wg_size } },
@@ -317,13 +317,16 @@ row_wise_transform(sycl::queue& q,
         }
       });
   });
+  evts_.push_back(evt_0);
+
+  return evts_;
 }
 
 // Six step algorithm based NTT implementation for 254-bit prime field
 //
 // Taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L753-L831
-sycl::event
+std::vector<sycl::event>
 six_step_fft(sycl::queue& q,
              ff_p254_t* vec,
              ff_p254_t* vec_scratch,
@@ -348,8 +351,10 @@ six_step_fft(sycl::queue& q,
   assert(n1 == n2 || n2 == 2 * n1);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
+  std::vector<sycl::event> evts_0;
+
   // compute i-th root of unity, where i = {dim, n1, n2}
-  sycl::event evt_0 = q.submit([&](sycl::handler& h) {
+  sycl::event evt_1 = q.submit([&](sycl::handler& h) {
     h.depends_on(evts);
     h.single_task([=]() {
       *omega_dim = get_root_of_unity(log_2_dim);
@@ -358,31 +363,56 @@ six_step_fft(sycl::queue& q,
     });
   });
 
+  evts_0.push_back(evt_1);
+
   // Step 1: Transpose Matrix
-  sycl::event evt_1 =
+  sycl::event evt_2 =
     matrix_transposed_initialise(q, vec, vec_scratch, n2, n1, n, wg_size, evts);
 
+  evts_0.push_back(evt_2);
+
   // Step 2: n2-many parallel n1-point Cooley-Tukey style NTT
-  sycl::event evt_2 = row_wise_transform(
-    q, vec_scratch, omega_n1, n2, n1, n, wg_size, { evt_0, evt_1 });
+  std::vector<sycl::event> evts_3 = row_wise_transform(
+    q, vec_scratch, omega_n1, n2, n1, n, wg_size, { evt_1, evt_2 });
+
+  for (auto evt : evts_3) {
+    evts_0.push_back(evt);
+  }
 
   // Step 3: Multiply by twiddle factors
-  sycl::event evt_3 = twiddle_multiplication(
-    q, vec_scratch, omega_dim, n2, n1, n, wg_size, { evt_2 });
+  sycl::event evt_4 = twiddle_multiplication(q,
+                                             vec_scratch,
+                                             omega_dim,
+                                             n2,
+                                             n1,
+                                             n,
+                                             wg_size,
+                                             { evts_3.at(evts_3.size() - 1) });
+
+  evts_0.push_back(evt_4);
 
   // Step 4: Transpose Matrix
-  sycl::event evt_4 = matrix_transpose(q, vec_scratch, n, { evt_3 });
+  sycl::event evt_5 = matrix_transpose(q, vec_scratch, n, { evt_4 });
+
+  evts_0.push_back(evt_5);
 
   // Step 5: n1-many parallel n2-point Cooley-Tukey NTT
-  sycl::event evt_5 =
-    row_wise_transform(q, vec_scratch, omega_n2, n1, n2, n, wg_size, { evt_4 });
+  std::vector<sycl::event> evts_6 =
+    row_wise_transform(q, vec_scratch, omega_n2, n1, n2, n, wg_size, { evt_5 });
+
+  for (auto evt : evts_6) {
+    evts_0.push_back(evt);
+  }
 
   // Step 6: Transpose Matrix
-  sycl::event evt_6 = matrix_transpose(q, vec_scratch, n, { evt_5 });
+  sycl::event evt_7 =
+    matrix_transpose(q, vec_scratch, n, { evts_6.at(evts_6.size() - 1) });
+
+  evts_0.push_back(evt_7);
 
   // copy result back to source vector
-  return q.submit([&](sycl::handler& h) {
-    h.depends_on(evt_6);
+  sycl::event evt_8 = q.submit([&](sycl::handler& h) {
+    h.depends_on(evt_7);
     h.parallel_for<class kernelFFTCopyBack>(
       sycl::nd_range<2>{ sycl::range<2>{ n2, n1 },
                          sycl::range<2>{ 1, wg_size } },
@@ -393,13 +423,16 @@ six_step_fft(sycl::queue& q,
         *(vec + it.get_global_linear_id()) = *(vec_scratch + r * n + c);
       });
   });
+
+  evts_0.push_back(evt_8);
+  return evts_0;
 }
 
 // Six step algorithm based NTT implementation for 254-bit prime field
 //
 // Taken from
 // https://github.com/itzmeanjan/ff-gpu/blob/2f58f3d4a38d9f4a8db4f57faab352b1b16b9e0b/ntt.cpp#L833-L921
-sycl::event
+std::vector<sycl::event>
 six_step_ifft(sycl::queue& q,
               ff_p254_t* vec,
               ff_p254_t* vec_scratch,
@@ -423,8 +456,10 @@ six_step_ifft(sycl::queue& q,
   assert(n1 == n2 || n2 == 2 * n1);
   assert(log_2_dim > 0 && log_2_dim <= TWO_ADICITY_);
 
+  std::vector<sycl::event> evts_0;
+
   // compute inverse of i-th root of unity, where i = {dim, n1, n2}
-  sycl::event evt_0 = q.submit([&](sycl::handler& h) {
+  sycl::event evt_1 = q.submit([&](sycl::handler& h) {
     h.depends_on(evts);
     h.single_task([=]() {
       *omega_dim_inv = static_cast<ff_p254_t>(
@@ -438,32 +473,57 @@ six_step_ifft(sycl::queue& q,
     });
   });
 
+  evts_0.push_back(evt_1);
+
   // Step 1: Transpose Matrix
-  sycl::event evt_1 =
+  sycl::event evt_2 =
     matrix_transposed_initialise(q, vec, vec_scratch, n2, n1, n, wg_size, evts);
 
+  evts_0.push_back(evt_2);
+
   // Step 2: n2-many parallel n1-point Cooley-Tukey style IFFT
-  sycl::event evt_2 = row_wise_transform(
-    q, vec_scratch, omega_n1_inv, n2, n1, n, wg_size, { evt_0, evt_1 });
+  std::vector<sycl::event> evts_3 = row_wise_transform(
+    q, vec_scratch, omega_n1_inv, n2, n1, n, wg_size, { evt_1, evt_2 });
+
+  for (auto evt : evts_3) {
+    evts_0.push_back(evt);
+  }
 
   // Step 3: Multiply by twiddle factors
-  sycl::event evt_3 = twiddle_multiplication(
-    q, vec_scratch, omega_dim_inv, n2, n1, n, wg_size, { evt_2 });
+  sycl::event evt_4 = twiddle_multiplication(q,
+                                             vec_scratch,
+                                             omega_dim_inv,
+                                             n2,
+                                             n1,
+                                             n,
+                                             wg_size,
+                                             { evts_3.at(evts_3.size() - 1) });
+
+  evts_0.push_back(evt_4);
 
   // Step 4: Transpose Matrix
-  sycl::event evt_4 = matrix_transpose(q, vec_scratch, n, { evt_3 });
+  sycl::event evt_5 = matrix_transpose(q, vec_scratch, n, { evt_4 });
+
+  evts_0.push_back(evt_5);
 
   // Step 5: n1-many parallel n2-point Cooley-Tukey IFFT
-  sycl::event evt_5 = row_wise_transform(
-    q, vec_scratch, omega_n2_inv, n1, n2, n, wg_size, { evt_4 });
+  std::vector<sycl::event> evts_6 = row_wise_transform(
+    q, vec_scratch, omega_n2_inv, n1, n2, n, wg_size, { evt_5 });
+
+  for (auto evt : evts_6) {
+    evts_0.push_back(evt);
+  }
 
   // Step 6: Transpose Matrix
-  sycl::event evt_6 = matrix_transpose(q, vec_scratch, n, { evt_5 });
+  sycl::event evt_7 =
+    matrix_transpose(q, vec_scratch, n, { evts_6.at(evts_6.size() - 1) });
+
+  evts_0.push_back(evt_7);
 
   // copy result back to source vector, while
   // also multiplying by inverse of domain size
-  return q.submit([&](sycl::handler& h) {
-    h.depends_on({ evt_6 });
+  sycl::event evt_8 = q.submit([&](sycl::handler& h) {
+    h.depends_on(evt_7);
     h.parallel_for<class kernelIFFTCopyBack>(
       sycl::nd_range<2>{ sycl::range<2>{ n2, n1 },
                          sycl::range<2>{ 1, wg_size } },
@@ -475,4 +535,7 @@ six_step_ifft(sycl::queue& q,
           *omega_domain_size_inv * *(vec_scratch + r * n + c);
       });
   });
+
+  evts_0.push_back(evt_8);
+  return evts_0;
 }

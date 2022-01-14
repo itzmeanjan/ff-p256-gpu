@@ -183,32 +183,32 @@ test_six_step_fft_ifft(sycl::queue& q,
   prepare_random_vector(vec_src, dim);
 
   sycl::event evt_0 = q.memcpy(vec_fwd, vec_src, sizeof(ff_p254_t) * dim);
-  sycl::event evt_1 = six_step_fft(q,
-                                   vec_fwd,
-                                   vec_scratch,
-                                   omega + 0,
-                                   omega + 1,
-                                   omega + 2,
-                                   dim,
-                                   wg_size,
-                                   { evt_0 });
+  std::vector<sycl::event> evts_1 = six_step_fft(q,
+                                                 vec_fwd,
+                                                 vec_scratch,
+                                                 omega + 0,
+                                                 omega + 1,
+                                                 omega + 2,
+                                                 dim,
+                                                 wg_size,
+                                                 { evt_0 });
 
   sycl::event evt_2 = q.submit([&](sycl::handler& h) {
-    h.depends_on(evt_1);
+    h.depends_on(evts_1.at(evts_1.size() - 1));
     h.memcpy(vec_inv, vec_fwd, sizeof(ff_p254_t) * dim);
   });
-  sycl::event evt_3 = six_step_ifft(q,
-                                    vec_inv,
-                                    vec_scratch,
-                                    omega + 0,
-                                    omega + 1,
-                                    omega + 2,
-                                    omega + 3,
-                                    dim,
-                                    wg_size,
-                                    { evt_2 });
+  std::vector<sycl::event> evts_3 = six_step_ifft(q,
+                                                  vec_inv,
+                                                  vec_scratch,
+                                                  omega + 0,
+                                                  omega + 1,
+                                                  omega + 2,
+                                                  omega + 3,
+                                                  dim,
+                                                  wg_size,
+                                                  { evt_2 });
 
-  evt_3.wait();
+  evts_3.at(evts_3.size() - 1).wait();
 
   for (uint64_t i = 0; i < dim; i++) {
     assert(*(vec_src + i) == *(vec_inv + i));

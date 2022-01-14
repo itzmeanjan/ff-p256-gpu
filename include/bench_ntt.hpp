@@ -2,19 +2,10 @@
 #include "ntt.hpp"
 #include "utils.hpp"
 
-enum data_transfer_t
-{
-  only_host_to_device,
-  only_device_to_host,
-  both,
-  none
-};
-
 int64_t
 benchmark_six_step_fft(sycl::queue& q,
                        const uint64_t dim,
-                       const uint64_t wg_size,
-                       data_transfer_t choice)
+                       const uint64_t wg_size)
 {
   uint64_t log_2_dim = (uint64_t)sycl::log2((float)dim);
   uint64_t n1 = 1 << (log_2_dim / 2);
@@ -32,38 +23,21 @@ benchmark_six_step_fft(sycl::queue& q,
 
   prepare_random_vector(vec_h, dim);
 
-  tp start, end;
-
-  if (choice == data_transfer_t::both ||
-      choice == data_transfer_t::only_host_to_device) {
-    start = std::chrono::system_clock::now();
-  }
-
   // host to device transfer
   q.memcpy(vec_d, vec_h, sizeof(ff_p254_t) * dim).wait();
 
-  if (choice == data_transfer_t::none ||
-      choice == data_transfer_t::only_device_to_host) {
-    start = std::chrono::system_clock::now();
-  }
+  tp start = std::chrono::system_clock::now();
 
   // compute
-  six_step_fft(
-    q, vec_d, vec_scratch, omega + 0, omega + 1, omega + 2, dim, wg_size, {})
-    .wait();
+  std::vector<sycl::event> evts = six_step_fft(
+    q, vec_d, vec_scratch, omega + 0, omega + 1, omega + 2, dim, wg_size, {});
 
-  if (choice == data_transfer_t::none ||
-      choice == data_transfer_t::only_host_to_device) {
-    end = std::chrono::system_clock::now();
-  }
+  evts.at(evts.size() - 1).wait();
+
+  tp end = std::chrono::system_clock::now();
 
   // device to host transfer
   q.memcpy(vec_h, vec_d, sizeof(ff_p254_t) * dim).wait();
-
-  if (choice == data_transfer_t::both ||
-      choice == data_transfer_t::only_device_to_host) {
-    end = std::chrono::system_clock::now();
-  }
 
   sycl::free(vec_h, q);
   sycl::free(vec_d, q);
@@ -77,8 +51,7 @@ benchmark_six_step_fft(sycl::queue& q,
 int64_t
 benchmark_six_step_ifft(sycl::queue& q,
                         const uint64_t dim,
-                        const uint64_t wg_size,
-                        data_transfer_t choice)
+                        const uint64_t wg_size)
 {
   uint64_t log_2_dim = (uint64_t)sycl::log2((float)dim);
   uint64_t n1 = 1 << (log_2_dim / 2);
@@ -96,46 +69,29 @@ benchmark_six_step_ifft(sycl::queue& q,
 
   prepare_random_vector(vec_h, dim);
 
-  tp start, end;
-
-  if (choice == data_transfer_t::both ||
-      choice == data_transfer_t::only_host_to_device) {
-    start = std::chrono::system_clock::now();
-  }
-
   // host to device transfer
   q.memcpy(vec_d, vec_h, sizeof(ff_p254_t) * dim).wait();
 
-  if (choice == data_transfer_t::none ||
-      choice == data_transfer_t::only_device_to_host) {
-    start = std::chrono::system_clock::now();
-  }
+  tp start = std::chrono::system_clock::now();
 
   // compute
-  six_step_ifft(q,
-                vec_d,
-                vec_scratch,
-                omega + 0,
-                omega + 1,
-                omega + 2,
-                omega + 3,
-                dim,
-                wg_size,
-                {})
-    .wait();
+  std::vector<sycl::event> evts = six_step_ifft(q,
+                                                vec_d,
+                                                vec_scratch,
+                                                omega + 0,
+                                                omega + 1,
+                                                omega + 2,
+                                                omega + 3,
+                                                dim,
+                                                wg_size,
+                                                {});
 
-  if (choice == data_transfer_t::none ||
-      choice == data_transfer_t::only_host_to_device) {
-    end = std::chrono::system_clock::now();
-  }
+  evts.at(evts.size() - 1).wait();
+
+  tp end = std::chrono::system_clock::now();
 
   // device to host transfer
   q.memcpy(vec_h, vec_d, sizeof(ff_p254_t) * dim).wait();
-
-  if (choice == data_transfer_t::both ||
-      choice == data_transfer_t::only_device_to_host) {
-    end = std::chrono::system_clock::now();
-  }
 
   sycl::free(vec_h, q);
   sycl::free(vec_d, q);
